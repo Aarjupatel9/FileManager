@@ -105,7 +105,7 @@
             android:layout_width="30dp"
             android:layout_height="30dp"
             android:layout_gravity="start"
-            android:background="@color/light_blue_600"
+            android:background="?colorLoopButtonDisableBackground"
             android:contentDescription="@string/toggle_playing_in_loop"
             android:src="@drawable/baseline_loop_24"
             app:fabCustomSize="60dp"

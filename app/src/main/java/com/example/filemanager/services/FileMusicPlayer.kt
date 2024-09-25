@@ -41,7 +41,7 @@ class FileMusicPlayer(private var parentContext: Context, private var files: Fil
     private lateinit var musicLength: TextView
     private lateinit var currentMusicLength: TextView
     private lateinit var musicSeekBar: SeekBar
-    private var infinitePlayEnable: Boolean = true
+    private var infinitePlayEnable: Boolean = false
 
 
 
@@ -68,19 +68,19 @@ class FileMusicPlayer(private var parentContext: Context, private var files: Fil
         }
 
         view.findViewById<ImageButton>(R.id.InfinitePlayButton).setOnClickListener {
-            if(infinitePlayEnable){
-                Log.d("FileMusicPlayer", "If setOnClickListener infinitePlayEnable=$infinitePlayEnable")
-                it.background = ColorDrawable(R.color.white);
-            }else{
-                Log.d("FileMusicPlayer", "Else setOnClickListener infinitePlayEnable=$infinitePlayEnable")
-                it.background = ColorDrawable(R.color.light_blue_900);
+            val colorBackground = if (infinitePlayEnable) {
+                // Retrieve color from theme
+                val typedValue = TypedValue()
+                context?.theme?.resolveAttribute(R.attr.colorLoopButtonDisableBackground, typedValue, true)
+                typedValue.data
+            } else {
+                val typedValue = TypedValue()
+                context?.theme?.resolveAttribute(R.attr.colorLoopButtonEnableBackground, typedValue, true)
+                typedValue.data
             }
+
+            it.background = ColorDrawable(colorBackground)
             infinitePlayEnable = !infinitePlayEnable
-
-//            val typedValue = TypedValue();
-//            theme.resolveAttribute(R..colorPrimary, typedValue, true);
-//            val color = ContextCompat.getColor(context?.applicationContext!!, typedValue.resourceId)
-
         }
 
         musicSeekBar = view.findViewById(R.id.musicTracker)
@@ -102,7 +102,6 @@ class FileMusicPlayer(private var parentContext: Context, private var files: Fil
         musicPlayer.setOnCompletionListener {
             Log.d("FileMusicPlayer", "setOnCompletionListener infinitePlayEnable=$infinitePlayEnable")
             if (infinitePlayEnable){
-                musicPlayer.seekTo(0);
                 musicPlayer.start()
             }
         }

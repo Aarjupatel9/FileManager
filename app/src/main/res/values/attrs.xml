@@ -3,4 +3,8 @@
         <attr name="fullscreenBackgroundColor" format="color" />
         <attr name="fullscreenTextColor" format="color" />
     </declare-styleable>
+
+    <attr name="colorLoopButtonDisableBackground" format="color" />
+    <attr name="colorLoopButtonEnableBackground" format="color" />
+    <attr name="colorLoopButtonText" format="color" />
 </resources>
