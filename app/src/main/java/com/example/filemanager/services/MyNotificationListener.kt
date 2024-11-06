@@ -3,25 +3,24 @@ package com.example.filemanager.services
 import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationManager
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothProfile
 import android.content.pm.PackageManager
+import android.media.AudioManager
 import android.os.Build
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
-import android.bluetooth.BluetoothAdapter
-import android.bluetooth.BluetoothProfile
-import android.media.AudioManager
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
-import com.example.filemanager.R
-import com.example.filemanager.services.LogManager
 import com.example.filemanager.Entities.Constants.notificationId
 import com.example.filemanager.Entities.Constants.notificationIdForNotification
+import com.example.filemanager.R
 
 class MyNotificationListener : NotificationListenerService() {
-    private val TAG = "MyNotificationListener";
+    private val TAG = "MyNotificationListener"
     private lateinit var logManager: LogManager
-    private  var currentNotificationVolume = 0;
+    private  var currentNotificationVolume = 0
 
 
     @RequiresApi(Build.VERSION_CODES.Q)
@@ -62,14 +61,14 @@ class MyNotificationListener : NotificationListenerService() {
         )
         Log.d(
             "NotificationListener",
-            "textToSpeak1: $textToSpeak,  isClearable: ${sbn.isClearable},  id: ${sbn.id},   sbn: ${sbn.toString()},  key: ${sbn.key}"
+            "textToSpeak1: $textToSpeak,  isClearable: ${sbn.isClearable},  id: ${sbn.id},   sbn: $sbn,  key: ${sbn.key}"
         )
         Log.d(
                 "NotificationListener",
         "textToSpeak2: ${sbn.user},  uid: ${sbn.uid},  settingText: ${sbn.notification.extras},   bubbleMetadata: ${sbn.notification.bubbleMetadata.toString()},  shortcutId: ${sbn.notification.shortcutId}"
         )
 
-        val messageDetail = sbn.notification.extras;
+        val messageDetail = sbn.notification.extras
 //        messageDetail.getString("Big Text");
 
         Log.d(
@@ -80,14 +79,14 @@ class MyNotificationListener : NotificationListenerService() {
 
         if(opPkg == "com.google.android.gm"){
             logManager.saveLog(
-                "textToSpeak: $textToSpeak,  isClearable: ${sbn.isClearable},  id: ${sbn.id},   Tag: ${sbn.tag},  falgs: ${sbn.notification.flags}, isForegroundService: $isForegroundService , isOngoingCall: $isOngoingCall, sbn: ${sbn.toString()}, sbn: ${sbn.packageName}, bubbleMetadata: ${sbn.notification.bubbleMetadata.toString()}, extras:${sbn.notification.extras}",
+                "textToSpeak: $textToSpeak,  isClearable: ${sbn.isClearable},  id: ${sbn.id},   Tag: ${sbn.tag},  falgs: ${sbn.notification.flags}, isForegroundService: $isForegroundService , isOngoingCall: $isOngoingCall, sbn: $sbn, sbn: ${sbn.packageName}, bubbleMetadata: ${sbn.notification.bubbleMetadata.toString()}, extras:${sbn.notification.extras}",
                 3
             )
-            playGoogleChatNotificationSound(sbn);
+            playGoogleChatNotificationSound(sbn)
         }
 
         if (isBluetoothConnected() && !isForegroundService && !isOngoingCall) {
-            var pass: Boolean=true;
+            var pass: Boolean=true
             when(textToSpeak){
                 "music"->{
                     pass=false
@@ -103,12 +102,12 @@ class MyNotificationListener : NotificationListenerService() {
                 Log.d("NotificationListener", "bluetooth connected")
                 logManager.saveLog("bluetooth connected , packageName: ${sbn.packageName}", 1)
                 var textToSpeechManager =
-                    TextToSpeechManager(applicationContext, textToSpeak);
+                    TextToSpeechManager(applicationContext, textToSpeak)
             }
         }
 
         logManager.saveLog(
-            "textToSpeak: $textToSpeak,  isClearable: ${sbn.isClearable},  id: ${sbn.id},   Tag: ${sbn.tag},  falgs: ${sbn.notification.flags}, isForegroundService: $isForegroundService , isOngoingCall: $isOngoingCall, sbn: ${sbn.toString()}, sbn: ${sbn.packageName}, bubbleMetadata: ${sbn.notification.bubbleMetadata.toString()}, extras:${sbn.notification.extras}",
+            "textToSpeak: $textToSpeak,  isClearable: ${sbn.isClearable},  id: ${sbn.id},   Tag: ${sbn.tag},  falgs: ${sbn.notification.flags}, isForegroundService: $isForegroundService , isOngoingCall: $isOngoingCall, sbn: $sbn, sbn: ${sbn.packageName}, bubbleMetadata: ${sbn.notification.bubbleMetadata.toString()}, extras:${sbn.notification.extras}",
             1
         )
 
@@ -150,18 +149,18 @@ class MyNotificationListener : NotificationListenerService() {
         val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
         val notificationMaxVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_NOTIFICATION)
         currentNotificationVolume = audioManager.getStreamVolume(AudioManager.STREAM_NOTIFICATION)
-        Log.d(TAG, "notification max volume : "+notificationMaxVol);
+        Log.d(TAG, "notification max volume : "+notificationMaxVol)
         audioManager.setStreamVolume(AudioManager.STREAM_NOTIFICATION, notificationMaxVol, 0)
         Thread(kotlinx.coroutines.Runnable {
 
             Log.d(TAG, "Thread start")
-            Thread.sleep(3000);
-            reminderChatNotification();
-            Thread.sleep(3000);
+            Thread.sleep(3000)
+            reminderChatNotification()
+            Thread.sleep(3000)
             Log.d(TAG, "Thread end")
             val am = getSystemService(AUDIO_SERVICE) as AudioManager
             am.setStreamVolume(AudioManager.STREAM_NOTIFICATION, currentNotificationVolume, 0)
-            currentNotificationVolume = 0;
+            currentNotificationVolume = 0
         }).start()
     }
 
@@ -173,12 +172,12 @@ class MyNotificationListener : NotificationListenerService() {
                 .setSmallIcon(R.drawable.ic_launcher_background)
                 .setContentTitle("File Manager")
                 .setContentText("Google Chat Alert").setChannelId(notificationId).setDefaults(Notification.DEFAULT_SOUND).setPriority(Notification.PRIORITY_MAX)
-                .setAutoCancel(false);
+                .setAutoCancel(false)
 
 
-        Log.d(TAG, "generateNotification start 2");
+         Log.d(TAG, "generateNotification start 2")
 
-        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         Log.d(TAG, "generateNotification build start")
 
         notificationManager.notify(notificationIdForNotification, builder.build())

@@ -2,7 +2,6 @@ package com.example.filemanager.Entities
 
 import java.io.File
 
-
 data class FileEntry(
     val file: File,
     val id: Any,

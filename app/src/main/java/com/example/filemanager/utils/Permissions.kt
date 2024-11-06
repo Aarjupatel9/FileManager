@@ -79,7 +79,7 @@ class Permissions(private var context: AppCompatActivity, var fileAdapter: FileA
     private val videoImagesPermission =
         context.registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissionMap ->
             if (permissionMap.all { it.value }) {
-                fileAdapter?.loadMediaFiles(Environment.getExternalStorageDirectory().absolutePath);
+                fileAdapter?.loadMediaFiles(Environment.getExternalStorageDirectory().absolutePath)
             } else {
                 Toast.makeText(
                     context,
@@ -93,7 +93,7 @@ class Permissions(private var context: AppCompatActivity, var fileAdapter: FileA
     private val readExternalPermission =
         context.registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             if (isGranted) {
-                fileAdapter?.loadMediaFiles(Environment.getExternalStorageDirectory().absolutePath);
+                fileAdapter?.loadMediaFiles(Environment.getExternalStorageDirectory().absolutePath)
             } else {
                 Toast.makeText(
                     context, "Read external storage permission denied!", Toast.LENGTH_SHORT
@@ -130,7 +130,7 @@ class Permissions(private var context: AppCompatActivity, var fileAdapter: FileA
     private val notificationPermissionListener =
         context.registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             if (isGranted) {
-                fileAdapter?.loadMediaFiles(Environment.getExternalStorageDirectory().absolutePath);
+                fileAdapter?.loadMediaFiles(Environment.getExternalStorageDirectory().absolutePath)
             } else {
                 Toast.makeText(
                     context,

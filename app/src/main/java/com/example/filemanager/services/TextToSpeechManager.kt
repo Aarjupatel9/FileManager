@@ -14,9 +14,6 @@ class TextToSpeechManager(private val context: Context, private val text: String
 
     private lateinit var textToSpeech: TextToSpeech
 
-    val params = HashMap<String, String>()
-
-
     init {
         textToSpeech = TextToSpeech(context, this)
         textToSpeech.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
@@ -36,13 +33,11 @@ class TextToSpeechManager(private val context: Context, private val text: String
                 // Called when speaking of text starts
             }
         })
-
     }
 
     private fun speak() {
         val params = Bundle()
         params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "utteranceId")
-
 
         val result = textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, params, "utteranceId")
         if (result != SUCCESS) {
@@ -56,14 +51,13 @@ class TextToSpeechManager(private val context: Context, private val text: String
 
     override fun onInit(status: Int) {
         if (status == SUCCESS) {
-            Log.d("TextToSpeechManager", "Text-to-Speech initialization success");
+            Log.d("TextToSpeechManager", "Text-to-Speech initialization success")
 
             val availableLanguages = textToSpeech.availableLanguages
             val availableVoices = textToSpeech.voices
 
 //            for (tmpVoice in availableVoices) {
 //                Log.d("TextToSpeechManager", "availableVoices name: ${tmpVoice.features} , local: ${tmpVoice.locale}")
-//
 //            }
 
             if (availableLanguages.contains(Locale.US) && availableVoices.any { it.locale == Locale.US }) {
@@ -80,7 +74,6 @@ class TextToSpeechManager(private val context: Context, private val text: String
                 textToSpeech.voice = voice
                 textToSpeech.language = locale
             }
-
 
             textToSpeech.setSpeechRate(1.0f) // Normal speech rate
             textToSpeech.setPitch(1.0f) // Normal pitch

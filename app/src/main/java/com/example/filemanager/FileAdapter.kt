@@ -41,7 +41,7 @@ class FileAdapter(private val context: AppCompatActivity) :
     private var musicService: FileMusicPlayer? = null
 
     init {
-        var permissionManager: Permissions = Permissions(context, this);
+        var permissionManager: Permissions = Permissions(context, this)
         if (permissionManager.requestStoragePermissions()) {
             loadMediaFiles(Environment.getExternalStorageDirectory().absolutePath)
         }
@@ -49,7 +49,7 @@ class FileAdapter(private val context: AppCompatActivity) :
 
     @SuppressLint("NotifyDataSetChanged")
     fun loadMediaFiles(directoryPath: String, fileSortOrder: Int = sortOrder) {
-        currentFile = directoryPath;
+        currentFile = directoryPath
         Log.d("MainActivity", "loadFiles start directoryPath : $directoryPath ")
 
         val externalUri: Uri = MediaStore.Files.getContentUri("external")
@@ -162,7 +162,7 @@ class FileAdapter(private val context: AppCompatActivity) :
         }
 
         // Combine sorted directories and files
-        fileList.clear();
+        fileList.clear()
         fileList.addAll(sortedDirectories)
         fileList.addAll(sortedOtherFiles)
         fileList.add(

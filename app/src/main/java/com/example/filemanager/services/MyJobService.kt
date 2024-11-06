@@ -1,6 +1,5 @@
 package com.example.filemanager.services
 
-
 import android.app.ActivityManager
 import android.app.job.JobParameters
 import android.app.job.JobService
@@ -14,23 +13,23 @@ class MyJobService : JobService() {
 
     override fun onStartJob(params: JobParameters?): Boolean {
         if (applicationContext == null) {
-            Log.d("MyJobService", "applicationContext null");
+            Log.d("MyJobService", "applicationContext null")
 
             return false
         }
         logManager = LogManager(applicationContext)
-        logManager.saveLog("MyJobService scheduled at ${Date()}", 2);
+        logManager.saveLog("MyJobService scheduled at ${Date()}", 2)
         if (!isMyServiceRunning(applicationContext)) {
             val serviceIntent = Intent(applicationContext, MyNotificationListener::class.java)
-            logManager.saveLog("MyNotificationListener not running", 2);
-            Log.d("MyJobService", "MyNotificationListener intent created");
-            logManager.saveLog("MyNotificationListener intent created", 2);
+            logManager.saveLog("MyNotificationListener not running", 2)
+            Log.d("MyJobService", "MyNotificationListener intent created")
+            logManager.saveLog("MyNotificationListener intent created", 2)
             applicationContext.startService(serviceIntent)
-            Log.d("MyJobService", "MyNotificationListener stated");
-            logManager.saveLog("MyNotificationListener stated", 2);
+            Log.d("MyJobService", "MyNotificationListener stated")
+            logManager.saveLog("MyNotificationListener stated", 2)
         } else {
-            logManager.saveLog("MyNotificationListener already running", 2);
-            Log.d("MyJobService", "MyNotificationListener already running");
+            logManager.saveLog("MyNotificationListener already running", 2)
+            Log.d("MyJobService", "MyNotificationListener already running")
         }
         jobFinished(params, false)
         return false

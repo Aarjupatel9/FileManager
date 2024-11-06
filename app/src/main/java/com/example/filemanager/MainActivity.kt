@@ -23,24 +23,21 @@ import android.widget.Button
 import android.widget.ImageButton
 import android.widget.RadioGroup
 import android.widget.Toast
-import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.ui.semantics.dismiss
 import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.filemanager.Entities.Constants.SORT_CONSTANTS
+import com.example.filemanager.Entities.Constants.notificationId
+import com.example.filemanager.Entities.Constants.notificationName
 import com.example.filemanager.databinding.ActivityMainBinding
 import com.example.filemanager.services.MyBroadcastReceiver
 import com.example.filemanager.services.MyJobService
 import java.lang.reflect.InvocationTargetException
-import com.example.filemanager.Entities.Constants.notificationId
-import com.example.filemanager.Entities.Constants.notificationName
 
 class MainActivity : AppCompatActivity() {
 
-    private val TAG = "mainActivity";
+    private val TAG = "mainActivity"
 
     private lateinit var recyclerView: RecyclerView
     private lateinit var fileAdapter: FileAdapter
@@ -151,7 +148,7 @@ class MainActivity : AppCompatActivity() {
     private fun initialNotificationSetup() {
         val importance = NotificationManager.IMPORTANCE_HIGH
         val chatChannel = NotificationChannel(notificationId, notificationName, importance)
-        chatChannel.description = "To get alert notification for important chat messages";
+        chatChannel.description = "To get alert notification for important chat messages"
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(chatChannel)
     }

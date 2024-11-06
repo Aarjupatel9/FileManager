@@ -28,5 +28,6 @@
     <string name="size_ascending">Size (Ascending)</string>
     <string name="name_descending">Name (Descending)</string>
     <string name="name_ascending">Name (Ascending)</string>
+    <string name="file_icons">File Icons</string>
 
 </resources>
