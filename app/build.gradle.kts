@@ -7,8 +7,6 @@ android {
     namespace = "com.example.filemanager"
     compileSdk = 34
 
-
-
     defaultConfig {
         applicationId = "com.example.filemanager"
         minSdk = 28
@@ -52,10 +50,10 @@ dependencies {
     implementation(libs.androidx.navigation.ui.ktx)
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.activity)
+    implementation(libs.androidx.material3.android)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-
 
     val fragment_version = "1.8.3"
 
@@ -68,10 +66,9 @@ dependencies {
     // Testing Fragments in Isolation
     debugImplementation(libs.androidx.fragment.testing)
 
-    val activity_version = "1.9.2"
-
     // Java language implementation
     implementation(libs.androidx.activity.v192)
     // Kotlin
     implementation(libs.androidx.activity.ktx)
+
 }

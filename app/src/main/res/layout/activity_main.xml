@@ -18,12 +18,25 @@ tools:context=".MainActivity">
         <ImageButton
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/main_left_margin"
             android:contentDescription="@string/back_to_parent_folder"
+            android:src="@drawable/baseline_arrow_back_24"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"/>
+
+        <ImageButton
+            android:id="@+id/sortButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="@dimen/main_left_margin"
+            android:contentDescription="@string/back_to_parent_folder"
+            android:src="@drawable/baseline_sort_24"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            android:src="@drawable/baseline_arrow_back_24"
-            android:layout_marginStart="@dimen/main_left_margin"/>
+
+            />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

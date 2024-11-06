@@ -23,7 +23,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.ViewHolder
+import com.example.filemanager.Entities.Constants.SORT_CONSTANTS
 import com.example.filemanager.Entities.FileEntry
+import com.example.filemanager.MainActivity.Companion.currentFile
+import com.example.filemanager.MainActivity.Companion.sortOrder
 import com.example.filemanager.databinding.ItemFileBinding
 import com.example.filemanager.services.FileMusicPlayer
 import com.example.filemanager.utils.Permissions
@@ -45,7 +48,8 @@ class FileAdapter(private val context: AppCompatActivity) :
     }
 
     @SuppressLint("NotifyDataSetChanged")
-    fun loadMediaFiles(directoryPath: String) {
+    fun loadMediaFiles(directoryPath: String, fileSortOrder: Int = sortOrder) {
+        currentFile = directoryPath;
         Log.d("MainActivity", "loadFiles start directoryPath : $directoryPath ")
 
         val externalUri: Uri = MediaStore.Files.getContentUri("external")
@@ -55,7 +59,9 @@ class FileAdapter(private val context: AppCompatActivity) :
             MediaStore.Files.FileColumns.DISPLAY_NAME,
             MediaStore.Files.FileColumns.DATA,
             MediaStore.Files.FileColumns.MIME_TYPE,
-            MediaStore.Files.FileColumns.PARENT
+            MediaStore.Files.FileColumns.PARENT,
+            MediaStore.Files.FileColumns.SIZE,
+            MediaStore.Files.FileColumns.DATE_MODIFIED,
         )
 
         val selection =
@@ -74,6 +80,9 @@ class FileAdapter(private val context: AppCompatActivity) :
             val dataIndex = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
             val mimeTypeIndex = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
             val parentIndex = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.PARENT)
+            val sizeIndex = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE)
+            val dateModifiedIndex =
+                it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED)
 
             while (it.moveToNext()) {
                 val id = it.getLong(idIndex)
@@ -81,20 +90,37 @@ class FileAdapter(private val context: AppCompatActivity) :
                 val data = it.getString(dataIndex)
                 val mimeType = it.getString(mimeTypeIndex)
                 val parentId = it.getString(parentIndex)
+                val size = it.getLong(sizeIndex)
+                val dateModified = it.getLong(dateModifiedIndex) * 1000 // Convert to miliseconds
 
                 Log.d("MainActivity", "FileAdapter Cursor : $id $parentId $name $mimeType $data ")
-//                val uri = ContentUris.withAppendedId(MediaStore.Files.getContentUri("external"), id)
                 if (!name.startsWith(".")) {
                     if (mimeType == null) {
                         fileList.add(
                             FileEntry(
-                                File(data), id, name, data, "dir", parentId.toLong(), false
+                                File(data),
+                                id,
+                                name,
+                                data,
+                                "dir",
+                                parentId.toLong(),
+                                false,
+                                size,
+                                dateModified
                             )
                         )
                     } else {
                         fileList.add(
                             FileEntry(
-                                File(data), id, name, data, mimeType, parentId.toLong(), false
+                                File(data),
+                                id,
+                                name,
+                                data,
+                                mimeType,
+                                parentId.toLong(),
+                                false,
+                                size,
+                                dateModified
                             )
                         )
                     }
@@ -103,13 +129,42 @@ class FileAdapter(private val context: AppCompatActivity) :
         }
         Log.d("MainActivity", "loadFiles list : ${fileList.size}")
 
-        fileList.sortWith { a, b ->
-            when {
-                a.mimetype == "dir" && b.mimetype != "dir" -> -1
-                a.mimetype != "dir" && b.mimetype == "dir" -> 1
-                else -> a.name.compareTo(b.name, ignoreCase = true)
-            }
+//        fileList.sortWith { a, b ->
+//            when {
+//                a.mimetype == "dir" && b.mimetype != "dir" -> -1
+//                a.mimetype != "dir" && b.mimetype == "dir" -> 1
+//                else -> a.name.compareTo(b.name, ignoreCase = true)
+//            }
+//        }
+
+        // Separate directories and files
+        val directories = fileList.filter { it.mimetype == "dir" }
+        val otherFiles = fileList.filterNot { it.mimetype == "dir" }
+
+        // Sort directories and files separately
+        val sortedDirectories = when (fileSortOrder) {
+            SORT_CONSTANTS.SORT_BY_NAME_ASC -> directories.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+            SORT_CONSTANTS.SORT_BY_NAME_DESC -> directories.sortedWith(compareByDescending(String.CASE_INSENSITIVE_ORDER) { it.name })
+            SORT_CONSTANTS.SORT_BY_SIZE_ASC -> directories.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+            SORT_CONSTANTS.SORT_BY_SIZE_DESC -> directories.sortedWith(compareByDescending(String.CASE_INSENSITIVE_ORDER) { it.name })
+            SORT_CONSTANTS.SORT_BY_DATE_ASC -> directories.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+            SORT_CONSTANTS.SORT_BY_DATE_DESC -> directories.sortedWith(compareByDescending(String.CASE_INSENSITIVE_ORDER) { it.name })
+            else -> directories // Default or invalid sort order
         }
+        val sortedOtherFiles = when (fileSortOrder) {
+            SORT_CONSTANTS.SORT_BY_NAME_ASC -> otherFiles.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+            SORT_CONSTANTS.SORT_BY_NAME_DESC -> otherFiles.sortedWith(compareByDescending(String.CASE_INSENSITIVE_ORDER) { it.name })
+            SORT_CONSTANTS.SORT_BY_SIZE_ASC -> otherFiles.sortedBy { it.size }
+            SORT_CONSTANTS.SORT_BY_SIZE_DESC -> otherFiles.sortedByDescending { it.dateModified }
+            SORT_CONSTANTS.SORT_BY_DATE_ASC -> otherFiles.sortedBy { it.dateModified }
+            SORT_CONSTANTS.SORT_BY_DATE_DESC -> otherFiles.sortedByDescending { it.dateModified }
+            else -> otherFiles // Default or invalid sort order
+        }
+
+        // Combine sorted directories and files
+        fileList.clear();
+        fileList.addAll(sortedDirectories)
+        fileList.addAll(sortedOtherFiles)
         fileList.add(
             0, FileEntry(
                 File(directoryPath),
@@ -118,7 +173,7 @@ class FileAdapter(private val context: AppCompatActivity) :
                 directoryPath,
                 "dir",
                 getParentDirectoryId(directoryPath),
-                false
+                false, 0, 0
             )
         )
         files = fileList

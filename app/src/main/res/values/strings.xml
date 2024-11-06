@@ -21,5 +21,12 @@
     <string name="welcome_to_filemanager">Welcome to FileManager</string>
     <string name="play_or_pause">Play or Pause</string>
     <string name="toggle_playing_in_loop">Toggle playing in loop</string>
+    <string name="date_modified_ascending">Date Modified (Ascending)</string>
+    <string name="size_descending">Size (Descending)</string>
+    <string name="date_modified_descending">Date Modified (Descending)</string>
+    <string name="apply">Apply</string>
+    <string name="size_ascending">Size (Ascending)</string>
+    <string name="name_descending">Name (Descending)</string>
+    <string name="name_ascending">Name (Ascending)</string>
 
 </resources>

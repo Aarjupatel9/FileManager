@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <RadioGroup
+        android:id="@+id/sortRadioGroup"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+
+        <RadioButton
+            android:id="@+id/sortByNameAsc"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/name_ascending"
+            android:textColor="?colorPrimary" />
+
+        <RadioButton
+            android:id="@+id/sortByNameDesc"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/name_descending"
+            android:textColor="?colorPrimary" />
+
+        <RadioButton
+            android:id="@+id/sortBySizeAsc"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/size_ascending"
+            android:textColor="?colorPrimary" />
+
+        <RadioButton
+            android:id="@+id/sortBySizeDesc"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/size_descending"
+            android:textColor="?colorPrimary" />
+
+        <RadioButton
+            android:id="@+id/sortByDateAsc"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/date_modified_ascending"
+            android:textColor="?colorPrimary" />
+
+        <RadioButton
+            android:id="@+id/sortByDateDesc"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/date_modified_descending"
+            android:textColor="?colorPrimary" />
+
+    </RadioGroup>
+
+    <Button
+        android:id="@+id/applySortButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/apply"
+        android:textColor="?colorPrimary" />
+
+</LinearLayout>

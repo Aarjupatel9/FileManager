@@ -2,6 +2,7 @@ package com.example.filemanager
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Dialog
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.job.JobInfo
@@ -19,20 +20,23 @@ import android.provider.Settings
 import android.text.TextUtils
 import android.util.Log
 import android.widget.Button
+import android.widget.ImageButton
+import android.widget.RadioGroup
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.ui.semantics.dismiss
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.filemanager.Entities.Constants.SORT_CONSTANTS
 import com.example.filemanager.databinding.ActivityMainBinding
 import com.example.filemanager.services.MyBroadcastReceiver
 import com.example.filemanager.services.MyJobService
 import java.lang.reflect.InvocationTargetException
 import com.example.filemanager.Entities.Constants.notificationId
 import com.example.filemanager.Entities.Constants.notificationName
-
 
 class MainActivity : AppCompatActivity() {
 
@@ -64,15 +68,50 @@ class MainActivity : AppCompatActivity() {
         initialNotificationSetup()
         startApplicationServices()
         checkNotificationPermission()
-//        startTethering(this)
+
+        val sortButton = findViewById<ImageButton>(R.id.sortButton)
+        sortButton.setOnClickListener {
+            val dialogView = layoutInflater.inflate(R.layout.sort_dialog, null)
+            val sortRadioGroup = dialogView.findViewById<RadioGroup>(R.id.sortRadioGroup)
+            val applySortButton = dialogView.findViewById<Button>(R.id.applySortButton)
+
+            when (sortOrder) {
+                SORT_CONSTANTS.SORT_BY_NAME_ASC -> sortRadioGroup.check(R.id.sortByNameAsc)
+                SORT_CONSTANTS.SORT_BY_NAME_DESC -> sortRadioGroup.check(R.id.sortByNameDesc)
+                SORT_CONSTANTS.SORT_BY_SIZE_ASC -> sortRadioGroup.check(R.id.sortBySizeAsc)
+                SORT_CONSTANTS.SORT_BY_SIZE_DESC -> sortRadioGroup.check(R.id.sortBySizeDesc)
+                SORT_CONSTANTS.SORT_BY_DATE_ASC -> sortRadioGroup.check(R.id.sortByDateAsc)
+                SORT_CONSTANTS.SORT_BY_DATE_DESC -> sortRadioGroup.check(R.id.sortByDateDesc)
+                else -> sortRadioGroup.check(R.id.sortByNameAsc)
+            }
+
+            val dialog = Dialog(MainActivity@this)
+            dialog.setContentView(dialogView)
+            dialog.show()
+
+            sortRadioGroup.setOnCheckedChangeListener { _, checkedId ->
+                sortOrder = when (checkedId) { // Use checkedId.id to get the ID
+                    R.id.sortByNameAsc -> SORT_CONSTANTS.SORT_BY_NAME_ASC
+                    R.id.sortByNameDesc -> SORT_CONSTANTS.SORT_BY_NAME_DESC
+                    R.id.sortBySizeAsc -> SORT_CONSTANTS.SORT_BY_SIZE_ASC
+                    R.id.sortBySizeDesc -> SORT_CONSTANTS.SORT_BY_SIZE_DESC
+                    R.id.sortByDateAsc -> SORT_CONSTANTS.SORT_BY_DATE_ASC
+                    R.id.sortByDateDesc -> SORT_CONSTANTS.SORT_BY_DATE_DESC
+                    else -> SORT_CONSTANTS.SORT_BY_NAME_ASC
+                }
+                currentFile?.let { it1 -> fileAdapter.loadMediaFiles(it1, sortOrder) }
+                dialog.dismiss()
+            }
+
+            dialog.show()
+        }
+
     }
 
-    private  fun checkNotificationPermission(){
+    private fun checkNotificationPermission() {
 //        if(areNotificationsEnabled()){
-//
 //        }
     }
-
 
     private fun checkManageExternalStoragePermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -187,6 +226,11 @@ class MainActivity : AppCompatActivity() {
             }
         }
         return false
+    }
+
+    companion object {
+        var currentFile: String? = null
+        var sortOrder: Int = 1
     }
 
 }

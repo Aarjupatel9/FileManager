@@ -23,6 +23,9 @@
         <item name="colorLoopButtonDisableBackground">@color/light_blue_A200</item>
         <item name="colorLoopButtonEnableBackground">@color/light_blue_900</item>
         <item name="colorLoopButtonText">@color/white</item>
+
+        <item name="colorSurface">@color/black_overlay</item>
+
     </style>
 
     <style name="ThemeOverlay.FileManager.FullscreenContainer" parent="">
