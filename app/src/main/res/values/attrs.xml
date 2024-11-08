@@ -7,4 +7,5 @@
     <attr name="colorLoopButtonDisableBackground" format="color" />
     <attr name="colorLoopButtonEnableBackground" format="color" />
     <attr name="colorLoopButtonText" format="color" />
+    <attr name="colorPrimary" format="color" />
 </resources>

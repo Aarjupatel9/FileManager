@@ -16,6 +16,7 @@ tools:context=".MainActivity">
         app:layout_constraintTop_toTopOf="parent">
 
         <ImageButton
+            android:id="@+id/mainActivityBackButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="@dimen/main_left_margin"
@@ -40,6 +41,48 @@ tools:context=".MainActivity">
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
+    <HorizontalScrollView
+        android:id="@+id/horizontalScrollView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:foregroundGravity="center_vertical"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/mainAppBar">
+
+        <LinearLayout
+            android:id="@+id/fileTreeLayout"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_marginHorizontal="@dimen/activity_horizontal_margin"
+            android:foregroundGravity="center"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="2sp"
+                android:layout_weight="1"
+                android:paddingHorizontal="5sp"
+                android:text="GEEKS"
+                android:textColor="#0F9D58"
+                android:textSize="16sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="2sp"
+                android:layout_weight="1"
+                android:paddingHorizontal="5sp"
+                android:text="FOR"
+                android:textColor="#0F9D58"
+                android:textSize="16sp" />
+
+
+        </LinearLayout>
+    </HorizontalScrollView>
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerView"
         android:layout_width="match_parent"
@@ -50,7 +93,7 @@ tools:context=".MainActivity">
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/mainAppBar" />
+        app:layout_constraintTop_toBottomOf="@+id/horizontalScrollView" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

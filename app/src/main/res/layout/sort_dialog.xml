@@ -5,6 +5,16 @@
     android:orientation="vertical"
     android:padding="16dp">
 
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/dimen_12"
+        android:layout_marginBottom="@dimen/dimen_12"
+        android:text="@string/select_sort_option"
+        android:textColor="?colorPrimary"
+        android:textSize="@dimen/font_size_24"
+        />
+
     <RadioGroup
         android:id="@+id/sortRadioGroup"
         android:layout_width="wrap_content"
@@ -54,11 +64,5 @@
 
     </RadioGroup>
 
-    <Button
-        android:id="@+id/applySortButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/apply"
-        android:textColor="?colorPrimary" />
 
 </LinearLayout>

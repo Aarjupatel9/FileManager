@@ -29,5 +29,6 @@
     <string name="name_descending">Name (Descending)</string>
     <string name="name_ascending">Name (Ascending)</string>
     <string name="file_icons">File Icons</string>
+    <string name="select_sort_option">Select sort option</string>
 
 </resources>

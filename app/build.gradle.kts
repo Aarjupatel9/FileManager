@@ -5,8 +5,7 @@ plugins {
 
 android {
     namespace = "com.example.filemanager"
-    compileSdk = 34
-
+    compileSdk = 34 
 
     defaultConfig {
         applicationId = "com.example.filemanager"
@@ -31,12 +30,15 @@ android {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
+
     kotlinOptions {
         jvmTarget = "1.8"
     }
+
     buildFeatures {
         viewBinding = true
     }
+
 }
 
 dependencies {

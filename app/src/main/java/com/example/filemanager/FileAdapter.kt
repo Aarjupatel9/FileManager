@@ -25,16 +25,19 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.ViewHolder
 import com.example.filemanager.Entities.Constants.SORT_CONSTANTS
 import com.example.filemanager.Entities.FileEntry
-import com.example.filemanager.MainActivity.Companion.currentFile
 import com.example.filemanager.MainActivity.Companion.sortOrder
 import com.example.filemanager.databinding.ItemFileBinding
 import com.example.filemanager.services.FileMusicPlayer
 import com.example.filemanager.utils.Permissions
+import com.example.filemanager.viewmodal.FileManagerViewModel
 import java.io.File
 
 
 @Suppress("DEPRECATION")
-class FileAdapter(private val context: AppCompatActivity) :
+class FileAdapter(
+    private val context: AppCompatActivity,
+    private val viewModel: FileManagerViewModel
+) :
     RecyclerView.Adapter<FileAdapter.FileViewHolder>() {
     private var files: List<FileEntry> = listOf()
     private val maxVisibleFileNameLength = 30
@@ -45,11 +48,17 @@ class FileAdapter(private val context: AppCompatActivity) :
         if (permissionManager.requestStoragePermissions()) {
             loadMediaFiles(Environment.getExternalStorageDirectory().absolutePath)
         }
+        viewModel.openedFile.observe(context) { currentFile ->
+            // Update UI or call FileAdapter functions with the new openedFileTree
+        }
     }
 
     @SuppressLint("NotifyDataSetChanged")
     fun loadMediaFiles(directoryPath: String, fileSortOrder: Int = sortOrder) {
-        currentFile = directoryPath
+
+        val fileInfo = getFileInfoFromPath(directoryPath)
+        viewModel.updateOpenedFileTreeData(fileInfo);
+
         Log.d("MainActivity", "loadFiles start directoryPath : $directoryPath ")
 
         val externalUri: Uri = MediaStore.Files.getContentUri("external")
@@ -129,14 +138,6 @@ class FileAdapter(private val context: AppCompatActivity) :
         }
         Log.d("MainActivity", "loadFiles list : ${fileList.size}")
 
-//        fileList.sortWith { a, b ->
-//            when {
-//                a.mimetype == "dir" && b.mimetype != "dir" -> -1
-//                a.mimetype != "dir" && b.mimetype == "dir" -> 1
-//                else -> a.name.compareTo(b.name, ignoreCase = true)
-//            }
-//        }
-
         // Separate directories and files
         val directories = fileList.filter { it.mimetype == "dir" }
         val otherFiles = fileList.filterNot { it.mimetype == "dir" }
@@ -165,27 +166,17 @@ class FileAdapter(private val context: AppCompatActivity) :
         fileList.clear()
         fileList.addAll(sortedDirectories)
         fileList.addAll(sortedOtherFiles)
-        fileList.add(
-            0, FileEntry(
-                File(directoryPath),
-                -1,
-                "..",
-                directoryPath,
-                "dir",
-                getParentDirectoryId(directoryPath),
-                false, 0, 0
-            )
-        )
         files = fileList
         notifyDataSetChanged()
     }
 
-    fun getParentDirectoryPath(parentId: Long): String? {
+    fun getParentDirectoryPath(parentId: Long): String {
         val externalUri: Uri = MediaStore.Files.getContentUri("external")
 
         // Define the projection (columns you want to retrieve)
         val projection = arrayOf(
-            MediaStore.Files.FileColumns.DATA // This will give us the file path
+            MediaStore.Files.FileColumns.DATA, // This will give us the file path
+            MediaStore.Files.FileColumns.DISPLAY_NAME
         )
 
         // Define the selection to filter by parent ID
@@ -197,17 +188,50 @@ class FileAdapter(private val context: AppCompatActivity) :
             externalUri, projection, selection, selectionArgs, null
         )
 
-        var path: String? = null
-
+        var path: String = "";
         cursor?.use {
             if (it.moveToFirst()) {
                 // Retrieve the file path
                 path = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA))
             }
         }
-
         return path
     }
+
+    fun getFileInfoFromPath(filePath: String): List<String> {
+        val externalUri: Uri = MediaStore.Files.getContentUri("external")
+
+        // Define the projection (columns you want to retrieve)
+        val projection = arrayOf(
+            MediaStore.Files.FileColumns.DATA,  // File path
+            MediaStore.Files.FileColumns.DISPLAY_NAME,  // File name
+        )
+
+        // Define the selection to filter by file path
+        val selection = "${MediaStore.Files.FileColumns.DATA} = ?"
+        val selectionArgs = arrayOf(filePath)
+
+        // Query the MediaStore
+        val cursor = context.contentResolver.query(
+            externalUri, projection, selection, selectionArgs, null
+        )
+
+        val fileData: MutableList<String> = mutableListOf()
+
+        cursor?.use {
+            if (it.moveToFirst()) {
+                val filePathFromDb =
+                    it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA))
+                val displayName =
+                    it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME))
+                fileData.add(filePathFromDb)
+                fileData.add(displayName)
+            }
+        }
+
+        return fileData
+    }
+
 
     private fun getParentDirectoryId(path: String): Long? {
         val externalUri: Uri = MediaStore.Files.getContentUri("external")
@@ -283,11 +307,7 @@ class FileAdapter(private val context: AppCompatActivity) :
                 file.parentId.let { itp ->
                     if (itp != null) {
                         getParentDirectoryPath(itp).let {
-                            if (it != null) {
-                                loadMediaFiles(it)
-                            } else {
-                                Log.d("FileAdapter", "Parent file is null")
-                            }
+                            loadMediaFiles(it)
                         }
                     } else {
                         Log.d("FileAdapter", "Parent file is null")
