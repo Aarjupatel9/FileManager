@@ -1,4 +1,4 @@
-package com.example.filemanager.services
+package com.mhk.filemanager.services
 
 import android.app.job.JobInfo
 import android.app.job.JobScheduler
@@ -8,7 +8,6 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import com.example.filemanager.services.LogManager
 import java.util.Date
 
 class MyBroadcastReceiver : BroadcastReceiver() {

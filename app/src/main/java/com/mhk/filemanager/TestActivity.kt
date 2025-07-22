@@ -1,4 +1,4 @@
-package com.example.filemanager
+package com.mhk.filemanager
 
 import android.Manifest
 import android.content.pm.PackageManager

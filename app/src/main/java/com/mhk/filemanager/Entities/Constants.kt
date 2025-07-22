@@ -1,4 +1,4 @@
-package com.example.filemanager.Entities
+package com.mhk.filemanager.Entities
 
 object Constants {
     var notificationId = "google_chat_message_alert"

@@ -1,4 +1,4 @@
-package com.example.filemanager.services
+package com.mhk.filemanager.services
 
 import android.annotation.SuppressLint
 import android.app.Notification
@@ -13,9 +13,9 @@ import android.service.notification.StatusBarNotification
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
-import com.example.filemanager.Entities.Constants.notificationId
-import com.example.filemanager.Entities.Constants.notificationIdForNotification
-import com.example.filemanager.R
+import com.mhk.filemanager.Entities.Constants.notificationId
+import com.mhk.filemanager.Entities.Constants.notificationIdForNotification
+import com.mhk.filemanager.R
 
 class MyNotificationListener : NotificationListenerService() {
     private val TAG = "MyNotificationListener"

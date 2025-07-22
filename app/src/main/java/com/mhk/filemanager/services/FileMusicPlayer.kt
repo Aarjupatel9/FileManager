@@ -1,9 +1,9 @@
-package com.example.filemanager.services
+package com.mhk.filemanager.services
 
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.DialogInterface
-import android.graphics.drawable.ColorDrawable
+import android.content.res.ColorStateList
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.os.Bundle
@@ -19,9 +19,9 @@ import android.widget.SeekBar
 import android.widget.TextView
 import androidx.core.net.toUri
 import androidx.fragment.app.DialogFragment
-import com.example.filemanager.Entities.FileEntry
-import com.example.filemanager.R
-
+import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.mhk.filemanager.Entities.FileEntry
+import com.mhk.filemanager.R
 
 class FileMusicPlayer(private var parentContext: Context, private var files: FileEntry) :
     DialogFragment() {
@@ -42,6 +42,14 @@ class FileMusicPlayer(private var parentContext: Context, private var files: Fil
     private var infinitePlayEnable: Boolean = false
 
 
+    override fun onStart() {
+        super.onStart()
+        // This is the fix: Force the dialog's window to match the parent's width.
+        dialog?.window?.setLayout(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+    }
 
     @SuppressLint("ResourceAsColor")
     override fun onCreateView(
@@ -56,7 +64,7 @@ class FileMusicPlayer(private var parentContext: Context, private var files: Fil
         currentMusicLength = view.findViewById(R.id.musicCurrentLengthText)
         startPlayerSetup()
 
-        view.findViewById<ImageButton>(R.id.PlayOrPauseButton).setOnClickListener {
+        view.findViewById<FloatingActionButton>(R.id.PlayOrPauseButton).setOnClickListener {
             if (musicPlayer.isPlaying) {
                 musicPlayer.pause()
             } else {
@@ -65,20 +73,21 @@ class FileMusicPlayer(private var parentContext: Context, private var files: Fil
             }
         }
 
-        view.findViewById<ImageButton>(R.id.InfinitePlayButton).setOnClickListener {
-            val colorBackground = if (infinitePlayEnable) {
-                // Retrieve color from theme
-                val typedValue = TypedValue()
-                context?.theme?.resolveAttribute(R.attr.colorLoopButtonDisableBackground, typedValue, true)
-                typedValue.data
+        val infinitePlayButton = view.findViewById<ImageButton>(R.id.InfinitePlayButton)
+        infinitePlayButton.setOnClickListener {
+            infinitePlayEnable = !infinitePlayEnable
+
+            val colorAttr = if (infinitePlayEnable) {
+                com.google.android.material.R.attr.colorPrimary
             } else {
-                val typedValue = TypedValue()
-                context?.theme?.resolveAttribute(R.attr.colorLoopButtonEnableBackground, typedValue, true)
-                typedValue.data
+                com.google.android.material.R.attr.colorOnSurfaceVariant
             }
 
-            it.background = ColorDrawable(colorBackground)
-            infinitePlayEnable = !infinitePlayEnable
+            val typedValue = TypedValue()
+            requireContext().theme.resolveAttribute(colorAttr, typedValue, true)
+            val tintColor = typedValue.data
+
+            infinitePlayButton.imageTintList = ColorStateList.valueOf(tintColor)
         }
 
         musicSeekBar = view.findViewById(R.id.musicTracker)
@@ -98,8 +107,11 @@ class FileMusicPlayer(private var parentContext: Context, private var files: Fil
         })
 
         musicPlayer.setOnCompletionListener {
-            Log.d("FileMusicPlayer", "setOnCompletionListener infinitePlayEnable=$infinitePlayEnable")
-            if (infinitePlayEnable){
+            Log.d(
+                "FileMusicPlayer",
+                "setOnCompletionListener infinitePlayEnable=$infinitePlayEnable"
+            )
+            if (infinitePlayEnable) {
                 musicPlayer.start()
             }
         }
@@ -122,11 +134,12 @@ class FileMusicPlayer(private var parentContext: Context, private var files: Fil
             musicLength.text = getTimeStringFromSeconds(musicPlayer.duration.div(1000))
             val mCurrentPosition: Int = musicPlayer.currentPosition.div(1000)
             val mTotalDuration: Int = musicPlayer.duration.div(1000)
-            musicSeekBar.setMax(mTotalDuration)
+            musicSeekBar.max = mTotalDuration
             musicSeekBar.progress = mCurrentPosition
             currentMusicLength.text = getTimeStringFromSeconds(mCurrentPosition)
             musicSeekBar.refreshDrawableState()
-        }catch (_:Exception){}
+        } catch (_: Exception) {
+        }
     }
 
     @SuppressLint("DefaultLocale")

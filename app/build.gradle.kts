@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.filemanager"
-    compileSdk = 34 
+    namespace = "com.mhk.filemanager"
+    compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.filemanager"
+        applicationId = "com.mhk.filemanager"
         minSdk = 28
         targetSdk = 34
         versionCode = 1

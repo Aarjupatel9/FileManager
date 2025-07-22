@@ -1,4 +1,4 @@
-package com.example.filemanager
+package com.mhk.filemanager
 
 import org.junit.Test
 

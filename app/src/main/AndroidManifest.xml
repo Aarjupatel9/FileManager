@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.mhk.filemanager">
 
     <!-- Permissions for Android 9 and below -->
     <uses-feature
@@ -92,18 +93,6 @@
             </intent-filter>
         </activity>
 
-        <!--        <activity-->
-        <!--        android:name=".TestActivity"-->
-        <!--        android:exported="true"-->
-        <!--        android:permissionGroup="STORAGE_MANAGEMENT"-->
-        <!--        android:theme="@style/Theme.FileManager.NoActionBar">-->
-        <!--        <intent-filter>-->
-        <!--            <action android:name="android.intent.action.MAIN" />-->
-        <!--            <category android:name="android.intent.category.LAUNCHER" />-->
-        <!--        </intent-filter>-->
-        <!--    </activity>-->
-
-
         <activity
             android:name=".services.TextToSpeechManager"
             android:exported="true" />
@@ -113,7 +102,7 @@
             android:exported="true"
             android:permission="android.permission.BLUETOOTH_CONNECT">
             <intent-filter>
-                <action android:name="com.example.NOTIFICATION_RECEIVED" />
+                <action android:name="com.mhk.NOTIFICATION_RECEIVED" />
 
                 <action android:name="android.bluetooth.adapter.action.STATE_CHANGED" />
                 <action android:name="android.bluetooth.adapter.action.CONNECTION_STATE_CHANGED" />

@@ -1,4 +1,4 @@
-package com.example.filemanager
+package com.mhk.filemanager
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -13,6 +13,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.content.res.ColorStateList
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
@@ -20,28 +21,25 @@ import android.provider.Settings
 import android.text.TextUtils
 import android.util.Log
 import android.util.TypedValue
-import android.widget.Button
+import android.view.ViewGroup
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.get
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.example.filemanager.Entities.Constants.SORT_CONSTANTS
-import com.example.filemanager.Entities.Constants.notificationId
-import com.example.filemanager.Entities.Constants.notificationName
-import com.example.filemanager.Entities.FileEntry
-import com.example.filemanager.databinding.ActivityMainBinding
-import com.example.filemanager.services.MyBroadcastReceiver
-import com.example.filemanager.services.MyJobService
-import com.example.filemanager.viewmodal.FileManagerViewModel
+import com.mhk.filemanager.Entities.Constants.SORT_CONSTANTS
+import com.mhk.filemanager.Entities.Constants.notificationId
+import com.mhk.filemanager.Entities.Constants.notificationName
+import com.mhk.filemanager.databinding.ActivityMainBinding
+import com.mhk.filemanager.services.MyBroadcastReceiver
+import com.mhk.filemanager.services.MyJobService
+import com.mhk.filemanager.viewmodal.FileManagerViewModel
 import java.lang.reflect.InvocationTargetException
 
 class MainActivity : AppCompatActivity() {
@@ -58,8 +56,6 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("NotifyDataSetChanged")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        setContentView(R.layout.activity_home)
         startMain()
     }
 
@@ -85,42 +81,9 @@ class MainActivity : AppCompatActivity() {
         initialFileManagementTasks()
 
         binding.sortButton.setOnClickListener {
-            val dialogView = layoutInflater.inflate(R.layout.sort_dialog, null)
-            val sortRadioGroup = dialogView.findViewById<RadioGroup>(R.id.sortRadioGroup)
-
-            when (sortOrder) {
-                SORT_CONSTANTS.SORT_BY_NAME_ASC -> sortRadioGroup.check(R.id.sortByNameAsc)
-                SORT_CONSTANTS.SORT_BY_NAME_DESC -> sortRadioGroup.check(R.id.sortByNameDesc)
-                SORT_CONSTANTS.SORT_BY_SIZE_ASC -> sortRadioGroup.check(R.id.sortBySizeAsc)
-                SORT_CONSTANTS.SORT_BY_SIZE_DESC -> sortRadioGroup.check(R.id.sortBySizeDesc)
-                SORT_CONSTANTS.SORT_BY_DATE_ASC -> sortRadioGroup.check(R.id.sortByDateAsc)
-                SORT_CONSTANTS.SORT_BY_DATE_DESC -> sortRadioGroup.check(R.id.sortByDateDesc)
-                else -> sortRadioGroup.check(R.id.sortByNameAsc)
-            }
-
-            val dialog = Dialog(MainActivity@ this)
-            dialog.setContentView(dialogView)
-            dialog.show()
-
-            sortRadioGroup.setOnCheckedChangeListener { _, checkedId ->
-                sortOrder = when (checkedId) { // Use checkedId.id to get the ID
-                    R.id.sortByNameAsc -> SORT_CONSTANTS.SORT_BY_NAME_ASC
-                    R.id.sortByNameDesc -> SORT_CONSTANTS.SORT_BY_NAME_DESC
-                    R.id.sortBySizeAsc -> SORT_CONSTANTS.SORT_BY_SIZE_ASC
-                    R.id.sortBySizeDesc -> SORT_CONSTANTS.SORT_BY_SIZE_DESC
-                    R.id.sortByDateAsc -> SORT_CONSTANTS.SORT_BY_DATE_ASC
-                    R.id.sortByDateDesc -> SORT_CONSTANTS.SORT_BY_DATE_DESC
-                    else -> SORT_CONSTANTS.SORT_BY_NAME_ASC
-                }
-                viewModel.openedFile.value?.let { it1 ->
-                    fileAdapter.loadMediaFiles(it1, sortOrder)
-                }
-
-                dialog.dismiss()
-            }
-
-            dialog.show()
+            showSortDialog()
         }
+
         binding.mainActivityBackButton.setOnClickListener{
             val size = viewModel.openedFileTree.value?.size
             if (size != null) {
@@ -134,78 +97,101 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun showSortDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.sort_dialog, null)
+        val dialog = Dialog(this)
+        dialog.setContentView(dialogView)
+
+        // Apply the rounded background and set the dialog width
+        dialog.window?.setBackgroundDrawable(ContextCompat.getDrawable(this, R.drawable.dialog_rounded_bg))
+        dialog.window?.setLayout((resources.displayMetrics.widthPixels * 0.90).toInt(), ViewGroup.LayoutParams.WRAP_CONTENT)
+
+
+        val nameAsc = dialogView.findViewById<ImageButton>(R.id.sortByNameAsc)
+        val nameDesc = dialogView.findViewById<ImageButton>(R.id.sortByNameDesc)
+        val sizeAsc = dialogView.findViewById<ImageButton>(R.id.sortBySizeAsc)
+        val sizeDesc = dialogView.findViewById<ImageButton>(R.id.sortBySizeDesc)
+        val dateAsc = dialogView.findViewById<ImageButton>(R.id.sortByDateAsc)
+        val dateDesc = dialogView.findViewById<ImageButton>(R.id.sortByDateDesc)
+
+        val buttons = mapOf(
+            SORT_CONSTANTS.SORT_BY_NAME_ASC to nameAsc,
+            SORT_CONSTANTS.SORT_BY_NAME_DESC to nameDesc,
+            SORT_CONSTANTS.SORT_BY_SIZE_ASC to sizeAsc,
+            SORT_CONSTANTS.SORT_BY_SIZE_DESC to sizeDesc,
+            SORT_CONSTANTS.SORT_BY_DATE_ASC to dateAsc,
+            SORT_CONSTANTS.SORT_BY_DATE_DESC to dateDesc
+        )
+
+        // Highlight the currently active sort button
+        val activeColor = getColorFromTheme(this, com.google.android.material.R.attr.colorPrimary)
+        buttons[sortOrder]?.imageTintList = ColorStateList.valueOf(activeColor)
+
+        buttons.forEach { (sortType, button) ->
+            button.setOnClickListener {
+                sortOrder = sortType
+                viewModel.openedFile.value?.let { path ->
+                    fileAdapter.loadMediaFiles(path, sortOrder)
+                }
+                dialog.dismiss()
+            }
+        }
+
+        dialog.show()
+    }
+
+
     private fun initialFileManagementTasks() {
 
         viewModel.openedFileTree.observe(this) { updatedOpenedFileTree ->
-            // Update UI or call FileAdapter functions with the new openedFileTree
             Log.d(TAG,"ViewModel observe Opened File Tree : $updatedOpenedFileTree")
             populateLinearLayout(
                 fileTreeLayout, updatedOpenedFileTree
-            ) // Assuming you have populateLinearLayout
+            )
         }
     }
 
     private fun populateLinearLayout(linearLayout: LinearLayout, openedFileTree: List<List<String>>) {
-        linearLayout.removeAllViews() // Clear existing views
+        linearLayout.removeAllViews()
 
-        // Loop through the openedFileTree list and create TextViews and ImageViews
         for (i in openedFileTree.indices) {
-            // Create a new TextView for each fileInfo
             val textView = TextView(linearLayout.context)
-
-            // Set the text from the fileInfo
             textView.text = openedFileTree[i][1]
+            textView.setPadding(16, 8, 16, 8)
+            textView.textSize = 16f
+            val colorPrimary = getColorFromTheme(linearLayout.context, com.google.android.material.R.attr.colorPrimary)
+            textView.setTextColor(colorPrimary)
 
-            // Set padding
-            textView.setPadding(16, 8, 16, 8) // Padding for spacing
-
-            // Set text size and color (similar to XML attributes)
-            textView.textSize = 16f // Text size in sp
-            val colorPrimary = getColorFromTheme(linearLayout.context, R.attr.colorPrimary)
-
-            textView.setTextColor(colorPrimary) // Text color
-
-            // Set layout parameters programmatically
             val layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                // Set horizontal margin
-                setMargins(2, 0, 2, 0) // Equivalent to `android:layout_marginHorizontal="2sp"`
-                weight = 1f  // Equivalent to `android:layout_weight="1"`
+                setMargins(2, 0, 2, 0)
             }
             textView.layoutParams = layoutParams
 
-            // Set onClickListener for the TextView
             textView.setOnClickListener {
-                // You can uncomment this line to call the function when TextView is clicked
-                // viewModel.updateOpenedFileTreeData(openedFileTree[i])
-                fileAdapter.loadMediaFiles(openedFileTree[i][0]) // Load the media file on click
+                fileAdapter.loadMediaFiles(openedFileTree[i][0])
             }
 
-            // Add the TextView to the LinearLayout
             linearLayout.addView(textView)
 
-            // Add a vector image between the TextViews
-            if (i < openedFileTree.size - 1) { // Add image between TextViews, not after the last one
+            if (i < openedFileTree.size - 1) {
                 val imageView = ImageView(linearLayout.context)
+                imageView.setImageResource(R.drawable.baseline_arrow_forward_ios_24)
 
-                // Set the vector image (use a vector drawable resource)
-                imageView.setImageResource(R.drawable.baseline_arrow_forward_ios_24) // Replace with your vector drawable
+                val typedValue = TypedValue()
+                linearLayout.context.theme.resolveAttribute(com.google.android.material.R.attr.colorOnSurfaceVariant, typedValue, true)
+                val arrowColor = typedValue.data
+                imageView.setColorFilter(arrowColor)
 
-                // Set layout params for the ImageView
                 val imageParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
                 ).apply {
-                    // Set margin between the image and TextView
-                    setMargins(8, 0, 8, 0) // Equivalent to `android:layout_marginHorizontal="8dp"`
+                    setMargins(8, 0, 8, 0)
                 }
-
-                // Set the layout parameters to the imageView
                 imageView.layoutParams = imageParams
-
-                // Add the ImageView to the LinearLayout
                 linearLayout.addView(imageView)
             }
         }
@@ -218,9 +204,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun checkManageExternalStoragePermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val hasPermission = Environment.isExternalStorageManager()
-            if (!hasPermission) {
-                // Prompt user to grant manage external storage permission
+            if (!Environment.isExternalStorageManager()) {
                 val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
                 startActivity(intent)
             }
@@ -237,7 +221,7 @@ class MainActivity : AppCompatActivity() {
             )
             if (m.name.equals("tether")) {
                 try {
-                    m.invoke(o, "eth0") // or whatever you know the iface to be
+                    m.invoke(o, "eth0")
                 } catch (e: IllegalArgumentException) {
                     e.printStackTrace()
                 } catch (e: IllegalAccessException) {
@@ -297,8 +281,8 @@ class MainActivity : AppCompatActivity() {
         val jobScheduler = getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler
         val componentName = ComponentName(this, MyJobService::class.java)
         val jobInfo = JobInfo.Builder(1, componentName)
-            .setPeriodic(20 * 60 * 1000) // 15 minutes (minimum allowed interval)
-            .setPersisted(true) // Job will survive device reboots
+            .setPeriodic(20 * 60 * 1000)
+            .setPersisted(true)
             .build()
         val resultCode = jobScheduler.schedule(jobInfo)
         if (resultCode == JobScheduler.RESULT_SUCCESS) {
@@ -328,7 +312,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
-        var sortOrder: Int = 1
+        var sortOrder: Int = SORT_CONSTANTS.SORT_BY_NAME_ASC
     }
 
     private fun checkNotificationPermission() {

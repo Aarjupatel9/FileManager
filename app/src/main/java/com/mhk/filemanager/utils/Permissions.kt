@@ -1,4 +1,4 @@
-package com.example.filemanager.utils
+package com.mhk.filemanager.utils
 
 import android.Manifest.permission.READ_EXTERNAL_STORAGE
 import android.Manifest.permission.READ_MEDIA_IMAGES
@@ -12,7 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import com.example.filemanager.FileAdapter
+import com.mhk.filemanager.FileAdapter
 
 class Permissions(private var context: AppCompatActivity, var fileAdapter: FileAdapter?) {
 

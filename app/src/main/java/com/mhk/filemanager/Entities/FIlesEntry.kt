@@ -1,4 +1,4 @@
-package com.example.filemanager.Entities
+package com.mhk.filemanager.Entities
 
 import java.io.File
 
