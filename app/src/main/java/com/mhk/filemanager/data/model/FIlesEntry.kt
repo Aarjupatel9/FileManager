@@ -1,4 +1,4 @@
-package com.mhk.filemanager.Entities
+package com.mhk.filemanager.data.model
 
 import java.io.File
 

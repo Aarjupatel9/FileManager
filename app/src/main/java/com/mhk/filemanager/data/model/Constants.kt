@@ -1,4 +1,4 @@
-package com.mhk.filemanager.Entities
+package com.mhk.filemanager.data.model
 
 object Constants {
     var notificationId = "google_chat_message_alert"

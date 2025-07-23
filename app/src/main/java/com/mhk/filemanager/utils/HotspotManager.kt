@@ -1,4 +1,4 @@
-package com.mhk.filemanager.services
+package com.mhk.filemanager.utils
 
 import android.content.Context
 import android.os.Bundle
@@ -16,7 +16,7 @@ class HotspotManager : AppCompatActivity() {
     }
 
     private fun startTethering(ctx: Context) {
-        val o = ctx.getSystemService(Context.CONNECTIVITY_SERVICE)
+        val o = ctx.getSystemService(CONNECTIVITY_SERVICE)
         for (m in o.javaClass.methods) {
             Log.d("HotspotManager", "m : ${m.name} ${m.defaultValue} returnType: ${m.returnType} ${m.isDefault} ${m.parameters} typeParameter:  ${m.typeParameters} ${m.parameterTypes} modifiers: ${m.annotations} ${m.isAccessible} isSynthetic: ${m.isSynthetic} ${m.modifiers}")
             if (m.name.equals("tether")) {

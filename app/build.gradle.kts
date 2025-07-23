@@ -75,4 +75,8 @@ dependencies {
     // Kotlin
     implementation(libs.androidx.activity.ktx)
 
+    // New dependencies for Preferences DataStore
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
+
 }

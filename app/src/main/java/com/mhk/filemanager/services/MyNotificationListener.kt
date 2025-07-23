@@ -13,9 +13,11 @@ import android.service.notification.StatusBarNotification
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
-import com.mhk.filemanager.Entities.Constants.notificationId
-import com.mhk.filemanager.Entities.Constants.notificationIdForNotification
+import com.mhk.filemanager.data.model.Constants.notificationId
+import com.mhk.filemanager.data.model.Constants.notificationIdForNotification
 import com.mhk.filemanager.R
+import com.mhk.filemanager.utils.LogManager
+import com.mhk.filemanager.utils.TextToSpeechManager
 
 class MyNotificationListener : NotificationListenerService() {
     private val TAG = "MyNotificationListener"

@@ -1,4 +1,4 @@
-package com.mhk.filemanager.services
+package com.mhk.filemanager.utils
 
 import android.content.Context
 import android.os.Bundle

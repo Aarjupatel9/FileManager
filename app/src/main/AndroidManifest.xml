@@ -83,7 +83,7 @@
         </provider>
 
         <activity
-            android:name=".MainActivity"
+            android:name=".ui.main.MainActivity"
             android:exported="true"
             android:permissionGroup="STORAGE_MANAGEMENT"
             android:theme="@style/Theme.FileManager.NoActionBar">
@@ -94,7 +94,7 @@
         </activity>
 
         <activity
-            android:name=".services.TextToSpeechManager"
+            android:name=".utils.TextToSpeechManager"
             android:exported="true" />
 
         <receiver

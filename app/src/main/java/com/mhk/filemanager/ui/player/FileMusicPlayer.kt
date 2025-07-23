@@ -1,4 +1,4 @@
-package com.mhk.filemanager.services
+package com.mhk.filemanager.ui.player
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -20,8 +20,8 @@ import android.widget.TextView
 import androidx.core.net.toUri
 import androidx.fragment.app.DialogFragment
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.mhk.filemanager.Entities.FileEntry
 import com.mhk.filemanager.R
+import com.mhk.filemanager.data.model.FileEntry
 
 class FileMusicPlayer(private var parentContext: Context, private var files: FileEntry) :
     DialogFragment() {
@@ -39,12 +39,12 @@ class FileMusicPlayer(private var parentContext: Context, private var files: Fil
     private lateinit var musicLength: TextView
     private lateinit var currentMusicLength: TextView
     private lateinit var musicSeekBar: SeekBar
+    private lateinit var playOrPauseButton: FloatingActionButton
     private var infinitePlayEnable: Boolean = false
 
 
     override fun onStart() {
         super.onStart()
-        // This is the fix: Force the dialog's window to match the parent's width.
         dialog?.window?.setLayout(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
@@ -62,15 +62,18 @@ class FileMusicPlayer(private var parentContext: Context, private var files: Fil
         view.findViewById<TextView>(R.id.currentMusicFileName).text = getSortFileName(files.name)
         musicLength = view.findViewById(R.id.musicLengthText)
         currentMusicLength = view.findViewById(R.id.musicCurrentLengthText)
-        startPlayerSetup()
+        playOrPauseButton = view.findViewById(R.id.PlayOrPauseButton)
 
-        view.findViewById<FloatingActionButton>(R.id.PlayOrPauseButton).setOnClickListener {
+        startPlayerSetup()
+        updatePlayPauseButton()
+
+        playOrPauseButton.setOnClickListener {
             if (musicPlayer.isPlaying) {
                 musicPlayer.pause()
             } else {
                 musicPlayer.start()
-                startPlayerSetup()
             }
+            updatePlayPauseButton()
         }
 
         val infinitePlayButton = view.findViewById<ImageButton>(R.id.InfinitePlayButton)
@@ -113,10 +116,23 @@ class FileMusicPlayer(private var parentContext: Context, private var files: Fil
             )
             if (infinitePlayEnable) {
                 musicPlayer.start()
+            } else {
+                // When not looping, reset to start and show play icon
+                musicPlayer.seekTo(0)
+                musicPlayer.pause()
+                updatePlayPauseButton()
             }
         }
 
         return view
+    }
+
+    private fun updatePlayPauseButton() {
+        if (musicPlayer.isPlaying) {
+            playOrPauseButton.setImageResource(R.drawable.baseline_pause_circle_outline_24)
+        } else {
+            playOrPauseButton.setImageResource(R.drawable.baseline_play_circle_outline_24)
+        }
     }
 
     private fun startPlayerSetup() {

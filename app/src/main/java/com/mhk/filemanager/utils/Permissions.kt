@@ -12,7 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import com.mhk.filemanager.FileAdapter
+import com.mhk.filemanager.ui.main.FileAdapter
 
 class Permissions(private var context: AppCompatActivity, var fileAdapter: FileAdapter?) {
 

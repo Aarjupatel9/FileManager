@@ -8,6 +8,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import com.mhk.filemanager.utils.LogManager
 import java.util.Date
 
 class MyBroadcastReceiver : BroadcastReceiver() {
