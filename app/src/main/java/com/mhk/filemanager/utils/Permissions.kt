@@ -102,43 +102,26 @@ class Permissions(private var context: AppCompatActivity, var fileAdapter: FileA
         }
 
 
-    fun requestNotificationPermissions(): Boolean {
-
+    fun requestNotificationPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(
                     context, notificationPermission
-                ) == PackageManager.PERMISSION_GRANTED
+                ) != PackageManager.PERMISSION_GRANTED
             ) {
-                return true
-            } else {
-                AlertDialog.Builder(context).setTitle("Storage Permission")
-                    .setMessage("Storage permission is needed in order to show images and video")
-                    .setNegativeButton("Cancel") { dialog, _ ->
-                        Toast.makeText(
-                            context, "Read external storage permission denied!", Toast.LENGTH_SHORT
-                        ).show()
-                        dialog.dismiss()
-                    }.setPositiveButton("OK") { _, _ ->
-                        notificationPermissionListener.launch(notificationPermission)
-                    }.show()
+                notificationPermissionLauncher.launch(notificationPermission)
             }
         }
-        return false
     }
 
 
-    private val notificationPermissionListener =
+    private val notificationPermissionLauncher =
         context.registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-            if (isGranted) {
-                fileAdapter?.loadMediaFiles(Environment.getExternalStorageDirectory().absolutePath)
-            } else {
+            if (!isGranted) {
                 Toast.makeText(
                     context,
-                    "Please give Notification permission in order to use full power of application's notification service",
-                    Toast.LENGTH_SHORT
+                    "You won't see music notifications without this permission.",
+                    Toast.LENGTH_LONG
                 ).show()
             }
         }
-
-
 }

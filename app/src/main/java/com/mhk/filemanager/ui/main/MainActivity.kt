@@ -46,16 +46,15 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.mhk.filemanager.ui.main.FileAdapter
 import com.mhk.filemanager.R
 import com.mhk.filemanager.data.datastore.SettingsManager
 import com.mhk.filemanager.data.model.Constants
 import com.mhk.filemanager.data.model.FileEntry
 import com.mhk.filemanager.databinding.ActivityMainBinding
 import com.mhk.filemanager.databinding.ItemFileBinding
-import com.mhk.filemanager.ui.player.FileMusicPlayer
 import com.mhk.filemanager.services.MyBroadcastReceiver
 import com.mhk.filemanager.services.MyJobService
+import com.mhk.filemanager.ui.player.FileMusicPlayer
 import com.mhk.filemanager.utils.Permissions
 import com.mhk.filemanager.viewmodal.FileManagerViewModel
 import kotlinx.coroutines.launch
@@ -71,6 +70,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var fileAdapter: FileAdapter
     private lateinit var binding: ActivityMainBinding
     private lateinit var settingsManager: SettingsManager
+    private lateinit var permissionManager: Permissions
+
 
     // This will hold the current sort order, loaded from DataStore
     private var currentSortOrder: Int = Constants.SORT_CONSTANTS.SORT_BY_NAME_ASC
@@ -88,6 +89,8 @@ class MainActivity : AppCompatActivity() {
 
         // Initialize SettingsManager
         settingsManager = SettingsManager(this)
+        permissionManager = Permissions(this, null)
+
 
         fileTreeLayout = binding.fileTreeLayout
         recyclerView = binding.recyclerView
@@ -103,7 +106,7 @@ class MainActivity : AppCompatActivity() {
 
         checkManageExternalStoragePermission()
         initialNotificationSetup()
-        startApplicationServices()
+        // startApplicationServices() // Temporarily commented out as requested
         checkNotificationPermission()
         initialFileManagementTasks()
 
@@ -319,6 +322,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkNotificationPermission() {
+        permissionManager.requestNotificationPermissions()
     }
 }
 
@@ -331,7 +335,6 @@ class FileAdapter(
     RecyclerView.Adapter<FileAdapter.FileViewHolder>() {
     private var files: List<FileEntry> = listOf()
     private val maxVisibleFileNameLength = 30
-    private var musicService: FileMusicPlayer? = null
 
     init {
         val permissionManager = Permissions(context, this)
@@ -453,7 +456,7 @@ class FileAdapter(
             binding.fileIcon.setImageResource(
                 when (fileEntry.mimetype) {
                     "dir" -> R.drawable.ic_folder
-                    "audio/mpeg", "audio/x-wav" -> R.drawable.baseline_music_note_24
+                    "audio/mpeg", "audio/x-wav", "audio/mp3" -> R.drawable.baseline_music_note_24
                     "audio/mp4", "video/mp4" -> R.drawable.baseline_video_file_24
                     "application/pdf" -> R.drawable.baseline_picture_as_pdf_24
                     else -> R.drawable.ic_file
@@ -465,11 +468,15 @@ class FileAdapter(
     }
 
     private fun handleFileClick(file: FileEntry) {
+        if (file.mimetype.startsWith("audio/")) {
+            val musicPlayerDialog = FileMusicPlayer(file)
+            musicPlayerDialog.show(context.supportFragmentManager, "FileMusicPlayer")
+            return
+        }
         if (file.mimetype != "dir") {
             openSelectedFile(file)
             return
         }
-        stopMusicPlayer()
         loadMediaFiles(file.data as String)
     }
 
@@ -551,11 +558,6 @@ class FileAdapter(
 
     override fun getItemCount(): Int = files.size
 
-    private fun stopMusicPlayer() {
-        musicService?.dismiss()
-        musicService = null
-    }
-
     @SuppressLint("QueryPermissionsNeeded")
     private fun openSelectedFile(fileEntry: FileEntry) {
         val file: File = fileEntry.file
@@ -563,12 +565,6 @@ class FileAdapter(
         try {
             val uri = FileProvider.getUriForFile(context, "${context.applicationContext.packageName}.fileProvider", file)
             val type = getFileType(uri)
-            if (type == "audio/x-wav" || type == "audio/mpeg") {
-                stopMusicPlayer()
-                musicService = FileMusicPlayer(context, fileEntry)
-                musicService?.show(context.supportFragmentManager, "Music Player")
-                return
-            }
             val viewIntent = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(uri, type)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)

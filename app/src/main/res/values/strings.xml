@@ -40,5 +40,7 @@
     <string name="rename_success">File renamed successfully.</string>
     <string name="rename_failed">Failed to rename file.</string>
     <string name="file_options">File options</string>
+    <string name="minimize">Minimize</string>
+    <string name="expand_player">Expand player</string>
 
 </resources>

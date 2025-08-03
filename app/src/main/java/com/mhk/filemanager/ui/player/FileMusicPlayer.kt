@@ -1,47 +1,40 @@
 package com.mhk.filemanager.ui.player
 
 import android.annotation.SuppressLint
-import android.content.Context
 import android.content.DialogInterface
-import android.content.res.ColorStateList
-import android.media.AudioAttributes
+import android.content.Intent
 import android.media.MediaPlayer
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
-import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
 import android.widget.SeekBar
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.fragment.app.DialogFragment
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.mhk.filemanager.R
 import com.mhk.filemanager.data.model.FileEntry
+import com.mhk.filemanager.services.MusicPlayerService
 
-class FileMusicPlayer(private var parentContext: Context, private var files: FileEntry) :
-    DialogFragment() {
+class FileMusicPlayer(private val fileEntry: FileEntry) : DialogFragment() {
 
-    private var maxVisibleFileNameLength = 30
-    var musicPlayer: MediaPlayer = MediaPlayer().apply {
-        setAudioAttributes(
-            AudioAttributes.Builder().setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                .setUsage(AudioAttributes.USAGE_MEDIA).build()
-        )
-        setDataSource(parentContext, files.file.toUri())
-        prepare()
-        start()
-    }
+    private val maxVisibleFileNameLength = 30
     private lateinit var musicLength: TextView
     private lateinit var currentMusicLength: TextView
     private lateinit var musicSeekBar: SeekBar
     private lateinit var playOrPauseButton: FloatingActionButton
-    private var infinitePlayEnable: Boolean = false
+    private lateinit var loopButton: ImageButton
+    private lateinit var expandButton: ImageButton
+    private lateinit var musicFileName: TextView
 
+    private var mediaPlayer: MediaPlayer? = null
+    private val handler = Handler(Looper.getMainLooper())
+    private var isExpanding = false // Flag to prevent stopping music on expand
 
     override fun onStart() {
         super.onStart()
@@ -59,110 +52,137 @@ class FileMusicPlayer(private var parentContext: Context, private var files: Fil
 
         val view = inflater.inflate(R.layout.fragment_dialog_fragment, container, false)
 
-        view.findViewById<TextView>(R.id.currentMusicFileName).text = getSortFileName(files.name)
+        // Initialize Views
+        musicFileName = view.findViewById(R.id.currentMusicFileName)
         musicLength = view.findViewById(R.id.musicLengthText)
         currentMusicLength = view.findViewById(R.id.musicCurrentLengthText)
         playOrPauseButton = view.findViewById(R.id.PlayOrPauseButton)
+        loopButton = view.findViewById(R.id.InfinitePlayButton)
+        expandButton = view.findViewById(R.id.expandButton)
+        musicSeekBar = view.findViewById(R.id.musicTracker)
 
-        startPlayerSetup()
-        updatePlayPauseButton()
+        musicFileName.text = getSortFileName(fileEntry.name)
 
+        // Initialize MediaPlayer
+        mediaPlayer = MediaPlayer().apply {
+            setDataSource(requireContext(), fileEntry.file.toUri())
+            prepare()
+            start()
+            setOnCompletionListener {
+                if (it.isLooping) {
+                    it.seekTo(0)
+                    it.start()
+                } else {
+                    updatePlayPauseButton()
+                }
+            }
+        }
+        updateUI()
+
+        // Set Click Listeners
         playOrPauseButton.setOnClickListener {
-            if (musicPlayer.isPlaying) {
-                musicPlayer.pause()
+            if (mediaPlayer?.isPlaying == true) {
+                mediaPlayer?.pause()
             } else {
-                musicPlayer.start()
+                mediaPlayer?.start()
             }
             updatePlayPauseButton()
         }
 
-        val infinitePlayButton = view.findViewById<ImageButton>(R.id.InfinitePlayButton)
-        infinitePlayButton.setOnClickListener {
-            infinitePlayEnable = !infinitePlayEnable
-
-            val colorAttr = if (infinitePlayEnable) {
-                com.google.android.material.R.attr.colorPrimary
-            } else {
-                com.google.android.material.R.attr.colorOnSurfaceVariant
-            }
-
-            val typedValue = TypedValue()
-            requireContext().theme.resolveAttribute(colorAttr, typedValue, true)
-            val tintColor = typedValue.data
-
-            infinitePlayButton.imageTintList = ColorStateList.valueOf(tintColor)
+        loopButton.setOnClickListener {
+            mediaPlayer?.isLooping = !(mediaPlayer?.isLooping ?: false)
+            updateLoopButton()
         }
 
-        musicSeekBar = view.findViewById(R.id.musicTracker)
+        expandButton.setOnClickListener {
+            isExpanding = true // Set flag
+            val currentPosition = mediaPlayer?.currentPosition ?: 0
+
+            // Stop and release the local player BEFORE starting the service
+            handler.removeCallbacks(updateSeekBarRunnable)
+            mediaPlayer?.stop()
+            mediaPlayer?.release()
+            mediaPlayer = null
+
+            // Start the service for background playback
+            val serviceIntent = Intent(requireContext(), MusicPlayerService::class.java).apply {
+                putExtra("filePath", fileEntry.file.absolutePath)
+                putExtra("initial_position", currentPosition)
+            }
+            ContextCompat.startForegroundService(requireContext(), serviceIntent)
+
+            // Start the activity
+            val activityIntent = Intent(requireContext(), MusicPlayerActivity::class.java).apply {
+                putExtra("filePath", fileEntry.file.absolutePath)
+            }
+            startActivity(activityIntent)
+            dismiss() // Dismiss the dialog
+        }
+
         musicSeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seek: SeekBar, progress: Int, fromUser: Boolean) {
                 if (fromUser) {
-                    Log.d("MusicPlayerActivity", "seek changed")
-                    musicPlayer.seekTo(progress * 1000)
+                    mediaPlayer?.seekTo(progress)
                 }
             }
-
-            override fun onStartTrackingTouch(seek: SeekBar) {
-            }
-
-            override fun onStopTrackingTouch(seek: SeekBar) {
-            }
+            override fun onStartTrackingTouch(seek: SeekBar) {}
+            override fun onStopTrackingTouch(seek: SeekBar) {}
         })
-
-        musicPlayer.setOnCompletionListener {
-            Log.d(
-                "FileMusicPlayer",
-                "setOnCompletionListener infinitePlayEnable=$infinitePlayEnable"
-            )
-            if (infinitePlayEnable) {
-                musicPlayer.start()
-            } else {
-                // When not looping, reset to start and show play icon
-                musicPlayer.seekTo(0)
-                musicPlayer.pause()
-                updatePlayPauseButton()
-            }
-        }
 
         return view
     }
 
+    private fun updateUI() {
+        updatePlayPauseButton()
+        updateLoopButton()
+        startUpdatingSeekBar()
+    }
+
+    private val updateSeekBarRunnable: Runnable = object : Runnable {
+        override fun run() {
+            mediaPlayer?.let {
+                if (it.isPlaying) {
+                    val currentPosition = it.currentPosition
+                    musicSeekBar.progress = currentPosition
+                    currentMusicLength.text = formatDuration(currentPosition)
+                }
+            }
+            handler.postDelayed(this, 1000)
+        }
+    }
+
+    private fun startUpdatingSeekBar() {
+        mediaPlayer?.let {
+            musicSeekBar.max = it.duration
+            musicLength.text = formatDuration(it.duration)
+        }
+        handler.post(updateSeekBarRunnable)
+    }
+
     private fun updatePlayPauseButton() {
-        if (musicPlayer.isPlaying) {
+        if (mediaPlayer?.isPlaying == true) {
             playOrPauseButton.setImageResource(R.drawable.baseline_pause_circle_outline_24)
         } else {
             playOrPauseButton.setImageResource(R.drawable.baseline_play_circle_outline_24)
         }
     }
 
-    private fun startPlayerSetup() {
-        val mainHandler = Handler(Looper.getMainLooper())
-        mainHandler.post(object : Runnable {
-            override fun run() {
-                updateUI()
-                mainHandler.postDelayed(this, 1000)
-            }
-        })
-    }
-
-    fun updateUI() {
-        try {
-            musicLength.text = getTimeStringFromSeconds(musicPlayer.duration.div(1000))
-            val mCurrentPosition: Int = musicPlayer.currentPosition.div(1000)
-            val mTotalDuration: Int = musicPlayer.duration.div(1000)
-            musicSeekBar.max = mTotalDuration
-            musicSeekBar.progress = mCurrentPosition
-            currentMusicLength.text = getTimeStringFromSeconds(mCurrentPosition)
-            musicSeekBar.refreshDrawableState()
-        } catch (_: Exception) {
+    private fun updateLoopButton() {
+        val colorAttr = if (mediaPlayer?.isLooping == true) {
+            com.google.android.material.R.attr.colorPrimary
+        } else {
+            com.google.android.material.R.attr.colorOnSurfaceVariant
         }
+        val typedValue = android.util.TypedValue()
+        requireContext().theme.resolveAttribute(colorAttr, typedValue, true)
+        loopButton.imageTintList = ContextCompat.getColorStateList(requireContext(), typedValue.resourceId)
     }
 
     @SuppressLint("DefaultLocale")
-    private fun getTimeStringFromSeconds(seconds: Int): String {
-        val minutes = seconds / 60
-        val remainingSeconds = seconds % 60
-        return String.format("%02d:%02d", minutes, remainingSeconds)
+    private fun formatDuration(durationMs: Int): String {
+        val minutes = (durationMs / 1000) / 60
+        val seconds = (durationMs / 1000) % 60
+        return String.format("%02d:%02d", minutes, seconds)
     }
 
     private fun getSortFileName(name: String): String {
@@ -172,21 +192,15 @@ class FileMusicPlayer(private var parentContext: Context, private var files: Fil
         return name
     }
 
-    override fun onDestroyView() {
-        super.onDestroyView()
-        try {
-            musicPlayer.stop()
-            musicPlayer.release()
-        } catch (_: Exception) {
-        }
-    }
-
     override fun onDismiss(dialog: DialogInterface) {
         super.onDismiss(dialog)
-        try {
-            musicPlayer.stop()
-            musicPlayer.release()
-        } catch (_: Exception) {
+        // Stop and release media player only if not expanding
+        if (!isExpanding) {
+            handler.removeCallbacks(updateSeekBarRunnable)
+            mediaPlayer?.stop()
+            mediaPlayer?.release()
+            mediaPlayer = null
         }
     }
 }
+ 
