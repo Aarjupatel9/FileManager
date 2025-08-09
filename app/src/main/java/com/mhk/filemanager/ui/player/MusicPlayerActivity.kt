@@ -25,6 +25,7 @@ import androidx.core.content.ContextCompat
 import com.mhk.filemanager.R
 import com.mhk.filemanager.services.MusicPlayerService
 import com.mhk.filemanager.ui.main.MainActivity
+import java.io.File
 
 class MusicPlayerActivity : AppCompatActivity() {
 
@@ -36,6 +37,8 @@ class MusicPlayerActivity : AppCompatActivity() {
     private lateinit var loopButton: ImageButton
     private lateinit var minimizeButton: ImageButton
     private lateinit var backButton: ImageButton
+    private lateinit var nextButton: ImageButton
+    private lateinit var previousButton: ImageButton
 
     private var musicPlayerService: MusicPlayerService? = null
     private var isBound = false
@@ -59,6 +62,7 @@ class MusicPlayerActivity : AppCompatActivity() {
             if (intent?.action == MusicPlayerService.ACTION_STATE_UPDATE) {
                 updatePlayPauseButton()
                 updateLoopButton()
+                musicFileName.text = musicPlayerService?.getTrackName()
             }
         }
     }
@@ -73,8 +77,15 @@ class MusicPlayerActivity : AppCompatActivity() {
             val filePath = getPathFromUri(fileUri)
 
             if (filePath != null) {
+                val parentDir = File(filePath).parentFile
+                val playlist = parentDir?.listFiles { file ->
+                    val name = file.name.lowercase()
+                    name.endsWith(".mp3") || name.endsWith(".wav")
+                }?.map { it.absolutePath }?.toCollection(ArrayList()) ?: arrayListOf(filePath)
+
                 val serviceIntent = Intent(this, MusicPlayerService::class.java).apply {
                     putExtra("filePath", filePath)
+                    putStringArrayListExtra("playlist", playlist)
                 }
                 ContextCompat.startForegroundService(this, serviceIntent)
             } else {
@@ -92,6 +103,9 @@ class MusicPlayerActivity : AppCompatActivity() {
         loopButton = findViewById(R.id.loopButton)
         minimizeButton = findViewById(R.id.minimizeButton)
         backButton = findViewById(R.id.backButton)
+        nextButton = findViewById(R.id.nextButton)
+        previousButton = findViewById(R.id.previousButton)
+
 
         playPauseButton.setOnClickListener {
             musicPlayerService?.togglePlayPause()
@@ -99,6 +113,14 @@ class MusicPlayerActivity : AppCompatActivity() {
 
         loopButton.setOnClickListener {
             musicPlayerService?.toggleLooping()
+        }
+
+        nextButton.setOnClickListener {
+            musicPlayerService?.playNextSong()
+        }
+
+        previousButton.setOnClickListener {
+            musicPlayerService?.playPreviousSong()
         }
 
         minimizeButton.setOnClickListener {

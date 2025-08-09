@@ -36,6 +36,8 @@ class MusicPlayerService : Service() {
     private var currentFilePath: String? = null
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var mediaSession: MediaSessionCompat
+    private var playlist: ArrayList<String> = ArrayList()
+    private var currentTrackIndex = -1
 
 
     companion object {
@@ -43,6 +45,8 @@ class MusicPlayerService : Service() {
         const val ACTION_PLAY_PAUSE = "com.mhk.filemanager.ACTION_PLAY_PAUSE"
         const val ACTION_STOP = "com.mhk.filemanager.ACTION_STOP"
         const val ACTION_TOGGLE_LOOP = "com.mhk.filemanager.ACTION_TOGGLE_LOOP"
+        const val ACTION_NEXT = "com.mhk.filemanager.ACTION_NEXT"
+        const val ACTION_PREVIOUS = "com.mhk.filemanager.ACTION_PREVIOUS"
         const val ACTION_STATE_UPDATE = "com.mhk.filemanager.ACTION_STATE_UPDATE"
         const val EXTRA_IS_PLAYING = "EXTRA_IS_PLAYING"
         const val EXTRA_IS_LOOPING = "EXTRA_IS_LOOPING"
@@ -68,39 +72,60 @@ class MusicPlayerService : Service() {
                 stopSelf()
             }
             ACTION_TOGGLE_LOOP -> toggleLooping()
+            ACTION_NEXT -> playNextSong()
+            ACTION_PREVIOUS -> playPreviousSong()
             else -> {
                 val filePath = intent?.getStringExtra("filePath")
                 val initialPosition = intent?.getIntExtra("initial_position", 0) ?: 0
+                playlist = intent?.getStringArrayListExtra("playlist") ?: ArrayList()
+                currentTrackIndex = playlist.indexOf(filePath)
 
-                if (filePath != null && filePath != currentFilePath) {
-                    currentFilePath = filePath
-                    val file = File(filePath)
-                    currentTrackName = file.name
-
-                    mediaPlayer?.release()
-
-                    mediaPlayer = MediaPlayer().apply {
-                        setDataSource(applicationContext, file.toUri())
-                        prepare()
-                        seekTo(initialPosition)
-                        start()
-                        setOnCompletionListener {
-                            if (isLooping) {
-                                it.seekTo(0)
-                                it.start()
-                            }
-                            updatePlaybackState()
-                            updateNotification()
-                            broadcastState()
-                        }
-                    }
-                    startForeground(1, createNotification())
-                    updatePlaybackState()
-                    startUpdatingSeekBar()
+                if (filePath != null) {
+                    playSong(filePath, initialPosition)
                 }
             }
         }
         return START_NOT_STICKY
+    }
+
+    private fun playSong(filePath: String, startPosition: Int = 0) {
+        currentFilePath = filePath
+        val file = File(filePath)
+        currentTrackName = file.name
+
+        mediaPlayer?.release()
+
+        mediaPlayer = MediaPlayer().apply {
+            setDataSource(applicationContext, file.toUri())
+            prepare()
+            seekTo(startPosition)
+            start()
+            setOnCompletionListener {
+                if (!isLooping) {
+                    playNextSong()
+                } else {
+                    it.seekTo(0)
+                    it.start()
+                }
+            }
+        }
+        startForeground(1, createNotification())
+        updatePlaybackState()
+        broadcastState()
+    }
+
+    fun playNextSong() {
+        if (playlist.isNotEmpty()) {
+            currentTrackIndex = (currentTrackIndex + 1) % playlist.size
+            playSong(playlist[currentTrackIndex])
+        }
+    }
+
+    fun playPreviousSong() {
+        if (playlist.isNotEmpty()) {
+            currentTrackIndex = if (currentTrackIndex > 0) currentTrackIndex - 1 else playlist.size - 1
+            playSong(playlist[currentTrackIndex])
+        }
     }
 
     private val mediaSessionCallback = object : MediaSessionCompat.Callback() {
@@ -110,6 +135,14 @@ class MusicPlayerService : Service() {
 
         override fun onPause() {
             if (mediaPlayer?.isPlaying == true) togglePlayPause()
+        }
+
+        override fun onSkipToNext() {
+            playNextSong()
+        }
+
+        override fun onSkipToPrevious() {
+            playPreviousSong()
         }
     }
 
@@ -159,7 +192,7 @@ class MusicPlayerService : Service() {
         mediaSession.setPlaybackState(
             PlaybackStateCompat.Builder()
                 .setState(state, mediaPlayer?.currentPosition?.toLong() ?: 0L, 1.0f)
-                .setActions(PlaybackStateCompat.ACTION_PLAY_PAUSE)
+                .setActions(PlaybackStateCompat.ACTION_PLAY_PAUSE or PlaybackStateCompat.ACTION_SKIP_TO_NEXT or PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)
                 .build()
         )
     }
@@ -200,6 +233,9 @@ class MusicPlayerService : Service() {
         val playPausePendingIntent = PendingIntent.getService(this, 1, Intent(this, MusicPlayerService::class.java).setAction(ACTION_PLAY_PAUSE), PendingIntent.FLAG_IMMUTABLE)
         val stopPendingIntent = PendingIntent.getService(this, 2, Intent(this, MusicPlayerService::class.java).setAction(ACTION_STOP), PendingIntent.FLAG_IMMUTABLE)
         val loopPendingIntent = PendingIntent.getService(this, 3, Intent(this, MusicPlayerService::class.java).setAction(ACTION_TOGGLE_LOOP), PendingIntent.FLAG_IMMUTABLE)
+        val nextPendingIntent = PendingIntent.getService(this, 4, Intent(this, MusicPlayerService::class.java).setAction(ACTION_NEXT), PendingIntent.FLAG_IMMUTABLE)
+        val prevPendingIntent = PendingIntent.getService(this, 5, Intent(this, MusicPlayerService::class.java).setAction(ACTION_PREVIOUS), PendingIntent.FLAG_IMMUTABLE)
+
 
         // --- Configure Collapsed View ---
         collapsedView.setViewVisibility(R.id.notification_album_art, View.GONE) // Hide album art
@@ -222,8 +258,10 @@ class MusicPlayerService : Service() {
         expandedView.setTextViewText(R.id.notification_total_time, formatDuration(duration))
 
         expandedView.setOnClickPendingIntent(R.id.notification_play_pause_expanded, playPausePendingIntent)
-        expandedView.setOnClickPendingIntent(R.id.notification_stop_expanded, stopPendingIntent)
+        expandedView.setOnClickPendingIntent(R.id.notification_next_expanded, nextPendingIntent)
+        expandedView.setOnClickPendingIntent(R.id.notification_previous_expanded, prevPendingIntent)
         expandedView.setOnClickPendingIntent(R.id.notification_loop_expanded, loopPendingIntent)
+
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.baseline_music_note_24)

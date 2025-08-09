@@ -22,12 +22,15 @@ import android.provider.Settings
 import android.text.TextUtils
 import android.util.Log
 import android.util.TypedValue
+import android.view.LayoutInflater
 import android.view.ViewGroup
+import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -57,6 +60,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var settingsManager: SettingsManager
     private lateinit var permissionManager: Permissions
+
+    private var isLibraryViewActive = false
 
 
     // This will hold the current sort order, loaded from DataStore
@@ -103,8 +108,20 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.libraryButton.setOnClickListener {
-            val musicLibraryPath = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), "FileManagerMusic").absolutePath
-            fileAdapter.loadMediaFiles(musicLibraryPath)
+            if (isLibraryViewActive) {
+                // Go back to all files
+                viewModel.resetFileTree()
+                fileAdapter.loadMediaFiles(Environment.getExternalStorageDirectory().absolutePath)
+            } else {
+                // Go to library
+                val musicLibraryPath = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), "FileManagerMusic").absolutePath
+                viewModel.resetFileTree()
+                fileAdapter.loadMediaFiles(musicLibraryPath)
+            }
+        }
+
+        binding.createFolderButton.setOnClickListener {
+            showCreateFolderDialog()
         }
 
         binding.mainActivityBackButton.setOnClickListener{
@@ -119,6 +136,55 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+    fun updateLibraryViewState(path: String) {
+        val musicLibraryPath = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), "FileManagerMusic").absolutePath
+        if (path.startsWith(musicLibraryPath)) {
+            isLibraryViewActive = true
+            binding.libraryButton.setImageResource(R.drawable.ic_folder)
+        } else {
+            isLibraryViewActive = false
+            binding.libraryButton.setImageResource(R.drawable.ic_library_music_24)
+        }
+    }
+
+    private fun showCreateFolderDialog() {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.create_folder_dialog, null)
+        val folderNameEditText = dialogView.findViewById<EditText>(R.id.folderNameEditText)
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(R.string.create_folder)
+            .setView(dialogView)
+            .setPositiveButton(R.string.create) { _, _ ->
+                val folderName = folderNameEditText.text.toString().trim()
+                if (folderName.isNotEmpty()) {
+                    createFolder(folderName)
+                } else {
+                    Toast.makeText(this, "Folder name cannot be empty", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .create()
+        dialog.show()
+    }
+
+    private fun createFolder(folderName: String) {
+        val currentPath = viewModel.openedFile.value ?: Environment.getExternalStorageDirectory().absolutePath
+        val newFolder = File(currentPath, folderName)
+
+        if (!newFolder.exists()) {
+            if (newFolder.mkdir()) {
+                Toast.makeText(this, R.string.folder_creation_success, Toast.LENGTH_SHORT).show()
+                // Refresh the file list to show the new folder
+                fileAdapter.loadMediaFiles(currentPath)
+            } else {
+                Toast.makeText(this, R.string.folder_creation_failed, Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            Toast.makeText(this, "Folder with this name already exists", Toast.LENGTH_SHORT).show()
+        }
+    }
+
 
     private fun createMusicLibraryFolder() {
         val musicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)

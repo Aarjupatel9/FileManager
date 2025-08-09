@@ -71,6 +71,18 @@
         app:layout_constraintTop_toBottomOf="@+id/musicSeekBar"
         tools:text="00:00" />
 
+    <ImageButton
+        android:id="@+id/previousButton"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Previous"
+        android:src="@drawable/ic_skip_previous_24"
+        app:layout_constraintBottom_toBottomOf="@+id/playPauseButton"
+        app:layout_constraintEnd_toStartOf="@+id/playPauseButton"
+        app:layout_constraintStart_toEndOf="@+id/loopButton"
+        app:layout_constraintTop_toTopOf="@+id/playPauseButton" />
+
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/playPauseButton"
         android:layout_width="wrap_content"
@@ -87,6 +99,18 @@
         app:tint="?attr/colorOnPrimaryContainer" />
 
     <ImageButton
+        android:id="@+id/nextButton"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Next"
+        android:src="@drawable/ic_skip_next_24"
+        app:layout_constraintBottom_toBottomOf="@+id/playPauseButton"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/playPauseButton"
+        app:layout_constraintTop_toTopOf="@+id/playPauseButton" />
+
+    <ImageButton
         android:id="@+id/loopButton"
         android:layout_width="48dp"
         android:layout_height="48dp"
@@ -94,7 +118,7 @@
         android:contentDescription="@string/toggle_playing_in_loop"
         android:src="@drawable/baseline_loop_24"
         app:layout_constraintBottom_toBottomOf="@+id/playPauseButton"
-        app:layout_constraintEnd_toStartOf="@+id/playPauseButton"
+        app:layout_constraintEnd_toStartOf="@+id/previousButton"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="@+id/playPauseButton"
         app:tint="?attr/colorOnSurfaceVariant" />

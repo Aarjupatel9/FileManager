@@ -13,17 +13,21 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
 import android.widget.EditText
+import android.widget.ListView
 import android.widget.PopupMenu
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.recyclerview.widget.RecyclerView
 import com.mhk.filemanager.R
 import com.mhk.filemanager.data.model.Constants
 import com.mhk.filemanager.data.model.FileEntry
 import com.mhk.filemanager.databinding.ItemFileBinding
+import com.mhk.filemanager.services.MusicPlayerService
 import com.mhk.filemanager.ui.player.FileMusicPlayer
 import com.mhk.filemanager.utils.Permissions
 import com.mhk.filemanager.viewmodal.FileManagerViewModel
@@ -56,6 +60,11 @@ class FileAdapter(
 
     @SuppressLint("NotifyDataSetChanged")
     fun loadMediaFiles(directoryPath: String, fileSortOrder: Int = sortOrder) {
+        // Update the library view state in MainActivity
+        if (context is MainActivity) {
+            context.updateLibraryViewState(directoryPath)
+        }
+
         val fileInfo = getFileInfoFromPath(directoryPath)
         viewModel.updateOpenedFileTreeData(fileInfo)
 
@@ -126,6 +135,11 @@ class FileAdapter(
         if (filePath == Environment.getExternalStorageDirectory().absolutePath) {
             return listOf(filePath, "Internal Storage")
         }
+        val musicLibraryPath = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), "FileManagerMusic").absolutePath
+        if (filePath == musicLibraryPath) {
+            return listOf(filePath, "Music Library")
+        }
+
         val externalUri: Uri = MediaStore.Files.getContentUri("external")
         val projection = arrayOf(
             MediaStore.Files.FileColumns.DATA,
@@ -172,6 +186,13 @@ class FileAdapter(
 
     private fun handleFileClick(file: FileEntry) {
         if (file.mimetype.startsWith("audio/")) {
+            val audioFiles = files.filter { it.mimetype.startsWith("audio/") }.map { it.file.absolutePath }.toCollection(ArrayList())
+            val serviceIntent = Intent(context, MusicPlayerService::class.java).apply {
+                putExtra("filePath", file.file.absolutePath)
+                putStringArrayListExtra("playlist", audioFiles)
+            }
+            ContextCompat.startForegroundService(context, serviceIntent)
+
             val musicPlayerDialog = FileMusicPlayer(file)
             musicPlayerDialog.show(context.supportFragmentManager, "FileMusicPlayer")
             return
@@ -186,10 +207,24 @@ class FileAdapter(
     private fun showPopupMenu(view: View, fileEntry: FileEntry) {
         val popup = PopupMenu(context, view)
         popup.menuInflater.inflate(R.menu.file_item_menu, popup.menu)
+
+        val moveItem = popup.menu.findItem(R.id.action_move)
+
+        // Check if the file is already in the music library
+        val musicLibraryPath = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), "FileManagerMusic").absolutePath
+        val fileParentPath = fileEntry.file.parentFile?.absolutePath ?: ""
+
+        // Show "Move" only for audio files that are NOT already in the library
+        moveItem.isVisible = fileEntry.mimetype.startsWith("audio/") && !fileParentPath.startsWith(musicLibraryPath)
+
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 R.id.action_rename -> {
                     showRenameDialog(fileEntry)
+                    true
+                }
+                R.id.action_move -> {
+                    showMoveToPlaylistDialog(fileEntry)
                     true
                 }
                 else -> false
@@ -197,6 +232,75 @@ class FileAdapter(
         }
         popup.show()
     }
+
+    private fun showMoveToPlaylistDialog(fileEntry: FileEntry) {
+        val musicLibraryDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), "FileManagerMusic")
+        val playlists = musicLibraryDir.listFiles { file -> file.isDirectory }?.map { it.name }?.toMutableList() ?: mutableListOf()
+
+        playlists.add(0, context.getString(R.string.create_new_playlist))
+
+        val adapter = ArrayAdapter(context, android.R.layout.simple_list_item_1, playlists)
+
+        AlertDialog.Builder(context)
+            .setTitle(R.string.move_to_playlist)
+            .setAdapter(adapter) { dialog, which ->
+                if (which == 0) {
+                    // Create New Playlist
+                    showCreatePlaylistDialog(fileEntry)
+                } else {
+                    // Move to existing playlist
+                    val playlistName = playlists[which]
+                    val destinationDir = File(musicLibraryDir, playlistName)
+                    moveFile(fileEntry, destinationDir)
+                }
+            }
+            .show()
+    }
+
+    private fun showCreatePlaylistDialog(fileEntry: FileEntry) {
+        val dialogView = LayoutInflater.from(context).inflate(R.layout.create_folder_dialog, null)
+        val folderNameEditText = dialogView.findViewById<EditText>(R.id.folderNameEditText)
+
+        AlertDialog.Builder(context)
+            .setTitle(R.string.create_new_playlist)
+            .setView(dialogView)
+            .setPositiveButton(R.string.create) { _, _ ->
+                val playlistName = folderNameEditText.text.toString().trim()
+                if (playlistName.isNotEmpty()) {
+                    val musicLibraryDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), "FileManagerMusic")
+                    val newPlaylistDir = File(musicLibraryDir, playlistName)
+                    if (newPlaylistDir.mkdirs()) {
+                        moveFile(fileEntry, newPlaylistDir)
+                    } else {
+                        Toast.makeText(context, "Failed to create playlist", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun moveFile(fileEntry: FileEntry, destinationDir: File) {
+        val sourceFile = fileEntry.file
+        val destinationFile = File(destinationDir, sourceFile.name)
+
+        if (sourceFile.renameTo(destinationFile)) {
+            // Update MediaStore for the old path (delete) and new path (scan)
+            context.contentResolver.delete(
+                MediaStore.Files.getContentUri("external"),
+                "${MediaStore.Files.FileColumns.DATA}=?",
+                arrayOf(sourceFile.absolutePath)
+            )
+            MediaScannerConnection.scanFile(context, arrayOf(destinationFile.absolutePath), null, null)
+
+            Toast.makeText(context, R.string.move_success, Toast.LENGTH_SHORT).show()
+            // Refresh the current directory
+            viewModel.openedFile.value?.let { loadMediaFiles(it) }
+        } else {
+            Toast.makeText(context, R.string.move_failed, Toast.LENGTH_SHORT).show()
+        }
+    }
+
 
     private fun showRenameDialog(fileEntry: FileEntry) {
         val dialogView = LayoutInflater.from(context).inflate(R.layout.rename_dialog, null)

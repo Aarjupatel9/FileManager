@@ -43,5 +43,15 @@
     <string name="minimize">Minimize</string>
     <string name="expand_player">Expand player</string>
     <string name="music_library">Music Library</string>
+    <string name="create_folder">Create Folder</string>
+    <string name="folder_name">Folder Name</string>
+    <string name="create">Create</string>
+    <string name="folder_creation_success">Folder created successfully.</string>
+    <string name="folder_creation_failed">Failed to create folder.</string>
+    <string name="move">Move</string>
+    <string name="move_to_playlist">Move to Playlist</string>
+    <string name="create_new_playlist">Create New Playlist</string>
+    <string name="move_success">File moved successfully.</string>
+    <string name="move_failed">Failed to move file.</string>
 
 </resources>

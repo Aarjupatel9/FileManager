@@ -47,5 +47,7 @@ class FileManagerViewModel : ViewModel() {
         _currentFileValue.value = openedFile.get(0)
     }
 
-
+    fun resetFileTree() {
+        _fileTreeLiveData.value = emptyList()
+    }
 }
