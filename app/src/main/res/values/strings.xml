@@ -42,5 +42,6 @@
     <string name="file_options">File options</string>
     <string name="minimize">Minimize</string>
     <string name="expand_player">Expand player</string>
+    <string name="music_library">Music Library</string>
 
 </resources>

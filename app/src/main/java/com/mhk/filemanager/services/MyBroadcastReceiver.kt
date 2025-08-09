@@ -36,10 +36,10 @@ class MyBroadcastReceiver : BroadcastReceiver() {
             Log.d("MyBroadcastReceiver", "Package: $packageName, Text: $notificationText")
             logManager.saveLog("Package: $packageName, Text: $notificationText", 3)
 
-            val state = intent?.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)
-            context?.let { scheduleJob(it) }
+//            val state = intent?.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)
+//            context?.let { scheduleJob(it) }
 
-        //            when (state) {
+//            when (state) {
 //                BluetoothAdapter.STATE_OFF -> {
 //                    context?.let { scheduleJob(it) }
 //
