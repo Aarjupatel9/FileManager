@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
@@ -8,61 +9,139 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="@dimen/dimen_12"
-        android:layout_marginBottom="@dimen/dimen_12"
+        android:layout_marginStart="8dp"
+        android:layout_marginBottom="16dp"
         android:text="@string/select_sort_option"
-        android:textColor="?colorPrimary"
-        android:textSize="@dimen/font_size_24"
-        />
+        android:textAppearance="?attr/textAppearanceTitleLarge"
+        android:textColor="?attr/colorOnSurface" />
 
-    <RadioGroup
-        android:id="@+id/sortRadioGroup"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content">
+    <!-- Sort by Name -->
+    <LinearLayout
+        android:id="@+id/sortByNameLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="false"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="8dp">
 
-        <RadioButton
+        <TextView
+            android:id="@+id/sortByNameText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/name_ascending"
+            android:textAppearance="?attr/textAppearanceBodyLarge"
+            android:textColor="?attr/colorOnSurface" />
+
+        <ImageButton
             android:id="@+id/sortByNameAsc"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/name_ascending"
-            android:textColor="?colorPrimary" />
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/name_ascending"
+            android:padding="4dp"
+            android:src="@drawable/ic_arrow_up"
+            app:tint="?attr/colorOnSurfaceVariant"
+            xmlns:app="http://schemas.android.com/apk/res-auto" />
 
-        <RadioButton
+        <ImageButton
             android:id="@+id/sortByNameDesc"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/name_descending"
-            android:textColor="?colorPrimary" />
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/name_descending"
+            android:padding="4dp"
+            android:src="@drawable/ic_arrow_down"
+            app:tint="?attr/colorOnSurfaceVariant"
+            xmlns:app="http://schemas.android.com/apk/res-auto" />
+    </LinearLayout>
 
-        <RadioButton
+    <!-- Sort by Size -->
+    <LinearLayout
+        android:id="@+id/sortBySizeLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="false"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="8dp">
+
+        <TextView
+            android:id="@+id/sortBySizeText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/size_ascending"
+            android:textAppearance="?attr/textAppearanceBodyLarge"
+            android:textColor="?attr/colorOnSurface" />
+
+        <ImageButton
             android:id="@+id/sortBySizeAsc"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/size_ascending"
-            android:textColor="?colorPrimary" />
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/size_ascending"
+            android:padding="4dp"
+            android:src="@drawable/ic_arrow_up"
+            app:tint="?attr/colorOnSurfaceVariant"
+            xmlns:app="http://schemas.android.com/apk/res-auto" />
 
-        <RadioButton
+        <ImageButton
             android:id="@+id/sortBySizeDesc"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/size_descending"
-            android:textColor="?colorPrimary" />
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/size_descending"
+            android:padding="4dp"
+            android:src="@drawable/ic_arrow_down"
+            app:tint="?attr/colorOnSurfaceVariant"
+            xmlns:app="http://schemas.android.com/apk/res-auto" />
+    </LinearLayout>
 
-        <RadioButton
+    <!-- Sort by Date -->
+    <LinearLayout
+        android:id="@+id/sortByDateLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="false"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="8dp">
+
+        <TextView
+            android:id="@+id/sortByDateText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/date_modified_ascending"
+            android:textAppearance="?attr/textAppearanceBodyLarge"
+            android:textColor="?attr/colorOnSurface" />
+
+        <ImageButton
             android:id="@+id/sortByDateAsc"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/date_modified_ascending"
-            android:textColor="?colorPrimary" />
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/date_modified_ascending"
+            android:padding="4dp"
+            android:src="@drawable/ic_arrow_up"
+            app:tint="?attr/colorOnSurfaceVariant"
+            xmlns:app="http://schemas.android.com/apk/res-auto" />
 
-        <RadioButton
+        <ImageButton
             android:id="@+id/sortByDateDesc"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/date_modified_descending"
-            android:textColor="?colorPrimary" />
-
-    </RadioGroup>
-
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/date_modified_descending"
+            android:padding="4dp"
+            android:src="@drawable/ic_arrow_down"
+            app:tint="?attr/colorOnSurfaceVariant"
+            xmlns:app="http://schemas.android.com/apk/res-auto" />
+    </LinearLayout>
 
 </LinearLayout>

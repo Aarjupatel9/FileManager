@@ -21,14 +21,37 @@
     <string name="welcome_to_filemanager">Welcome to FileManager</string>
     <string name="play_or_pause">Play or Pause</string>
     <string name="toggle_playing_in_loop">Toggle playing in loop</string>
-    <string name="date_modified_ascending">Date Modified (Ascending)</string>
+    <string name="date_modified_ascending">Date Modified</string>
     <string name="size_descending">Size (Descending)</string>
     <string name="date_modified_descending">Date Modified (Descending)</string>
     <string name="apply">Apply</string>
-    <string name="size_ascending">Size (Ascending)</string>
+    <string name="size_ascending">Size</string>
     <string name="name_descending">Name (Descending)</string>
-    <string name="name_ascending">Name (Ascending)</string>
+    <string name="name_ascending">Name</string>
     <string name="file_icons">File Icons</string>
     <string name="select_sort_option">Select sort option</string>
+
+    <!-- New strings for rename functionality -->
+    <string name="rename">Rename</string>
+    <string name="rename_file">Rename File</string>
+    <string name="new_name">New name</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="rename_success">File renamed successfully.</string>
+    <string name="rename_failed">Failed to rename file.</string>
+    <string name="file_options">File options</string>
+    <string name="minimize">Minimize</string>
+    <string name="expand_player">Expand player</string>
+    <string name="music_library">Music Library</string>
+    <string name="create_folder">Create Folder</string>
+    <string name="folder_name">Folder Name</string>
+    <string name="create">Create</string>
+    <string name="folder_creation_success">Folder created successfully.</string>
+    <string name="folder_creation_failed">Failed to create folder.</string>
+    <string name="move">Move</string>
+    <string name="move_to_playlist">Move to Playlist</string>
+    <string name="create_new_playlist">Create New Playlist</string>
+    <string name="move_success">File moved successfully.</string>
+    <string name="move_failed">Failed to move file.</string>
 
 </resources>

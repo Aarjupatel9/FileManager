@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.filemanager"
-    compileSdk = 34 
+    namespace = "com.mhk.filemanager"
+    compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.filemanager"
+        applicationId = "com.mhk.filemanager"
         minSdk = 28
         targetSdk = 34
         versionCode = 1
@@ -54,6 +54,7 @@ dependencies {
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.material3.android)
+    implementation(libs.androidx.media)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -74,5 +75,9 @@ dependencies {
     implementation(libs.androidx.activity.v192)
     // Kotlin
     implementation(libs.androidx.activity.ktx)
+
+    // New dependencies for Preferences DataStore
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
 
 }
