@@ -70,7 +70,8 @@ class MyNotificationListener : NotificationListenerService() {
         "textToSpeak2: ${sbn.user},  uid: ${sbn.uid},  settingText: ${sbn.notification.extras},   bubbleMetadata: ${sbn.notification.bubbleMetadata.toString()},  shortcutId: ${sbn.notification.shortcutId}"
         )
 
-        val messageDetail = sbn.notification.extras
+        // messageDetail was unused, removed
+//        val messageDetail = sbn.notification.extras
 //        messageDetail.getString("Big Text");
 
         Log.d(
@@ -103,8 +104,8 @@ class MyNotificationListener : NotificationListenerService() {
             if(pass){
                 Log.d("NotificationListener", "bluetooth connected")
                 logManager.saveLog("bluetooth connected , packageName: ${sbn.packageName}", 1)
-                var textToSpeechManager =
-                    TextToSpeechManager(applicationContext, textToSpeak)
+                // Initialize TextToSpeechManager (triggers speech)
+                TextToSpeechManager(applicationContext, textToSpeak)
             }
         }
 
@@ -130,7 +131,12 @@ class MyNotificationListener : NotificationListenerService() {
 
     @SuppressLint("MissingPermission", "SuspiciousIndentation")
     fun isBluetoothConnected(): Boolean {
-        val bluetoothAdapter: BluetoothAdapter? = BluetoothAdapter.getDefaultAdapter()
+        val bluetoothAdapter: BluetoothAdapter? = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            (getSystemService(BLUETOOTH_SERVICE) as? android.bluetooth.BluetoothManager)?.adapter
+        } else {
+            @Suppress("DEPRECATION")
+            BluetoothAdapter.getDefaultAdapter()
+        }
 
         val profiles = intArrayOf(
             BluetoothProfile.A2DP,   // Advanced Audio Distribution Profile (for audio streaming)
@@ -146,7 +152,7 @@ class MyNotificationListener : NotificationListenerService() {
         }
         return false
     }
-    fun playGoogleChatNotificationSound(sbn:StatusBarNotification){
+    fun playGoogleChatNotificationSound(@Suppress("UNUSED_PARAMETER") sbn: StatusBarNotification){
 
         val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
         val notificationMaxVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_NOTIFICATION)
@@ -170,10 +176,10 @@ class MyNotificationListener : NotificationListenerService() {
         Log.d(TAG, "generateNotification start")
 
         val builder: NotificationCompat.Builder =
-            NotificationCompat.Builder(this)
+            NotificationCompat.Builder(this, notificationId)
                 .setSmallIcon(R.drawable.ic_launcher_background)
                 .setContentTitle("File Manager")
-                .setContentText("Google Chat Alert").setChannelId(notificationId).setDefaults(Notification.DEFAULT_SOUND).setPriority(Notification.PRIORITY_MAX)
+                .setContentText("Google Chat Alert").setDefaults(Notification.DEFAULT_SOUND).setPriority(NotificationCompat.PRIORITY_MAX)
                 .setAutoCancel(false)
 
 

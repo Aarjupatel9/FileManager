@@ -19,15 +19,15 @@
         app:tint="?attr/colorOnSurface" />
 
     <ImageButton
-        android:id="@+id/minimizeButton"
+        android:id="@+id/closeButton"
         android:layout_width="48dp"
         android:layout_height="48dp"
         android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="@string/minimize"
-        android:src="@drawable/baseline_minimize_24"
+        android:contentDescription="Stop and Close"
+        android:src="@android:drawable/ic_menu_close_clear_cancel"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:tint="?attr/colorOnSurfaceVariant" />
+        app:tint="?attr/colorError" />
 
     <TextView
         android:id="@+id/musicFileName"

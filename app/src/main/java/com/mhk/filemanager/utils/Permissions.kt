@@ -4,6 +4,7 @@ import android.Manifest.permission.READ_EXTERNAL_STORAGE
 import android.Manifest.permission.READ_MEDIA_IMAGES
 import android.Manifest.permission.READ_MEDIA_VIDEO
 import android.Manifest.permission.POST_NOTIFICATIONS
+import android.Manifest.permission.READ_MEDIA_AUDIO
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Environment
@@ -19,8 +20,9 @@ class Permissions(private var context: AppCompatActivity, var fileAdapter: FileA
     private val readExternal = READ_EXTERNAL_STORAGE
     private val readVideo = READ_MEDIA_VIDEO
     private val readImages = READ_MEDIA_IMAGES
+    private val readAudio = READ_MEDIA_AUDIO
     private val permissions = arrayOf(
-        readVideo, readImages
+        readVideo, readImages, readAudio
     )
 
     private val notificationPermission = POST_NOTIFICATIONS

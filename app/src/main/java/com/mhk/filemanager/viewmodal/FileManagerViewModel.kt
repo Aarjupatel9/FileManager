@@ -44,10 +44,49 @@ class FileManagerViewModel : ViewModel() {
     }
 
     private fun updateOpenedFileValue(openedFile: List<String>) {
-        _currentFileValue.value = openedFile.get(0)
+        _currentFileValue.value = openedFile[0]
     }
 
     fun resetFileTree() {
         _fileTreeLiveData.value = emptyList()
+    }
+
+    fun navigateBack(): String? {
+        val currentTree = _fileTreeLiveData.value ?: emptyList()
+        val currentPath = _currentFileValue.value ?: Environment.getExternalStorageDirectory().absolutePath
+        val rootPath = Environment.getExternalStorageDirectory().absolutePath
+        
+        // If already at root and tree is empty, return null to close app
+        if (currentTree.isEmpty() && currentPath == rootPath) {
+            return null
+        }
+        
+        // If tree is empty but not at root, go to root
+        if (currentTree.isEmpty()) {
+            _currentFileValue.value = rootPath
+            return rootPath
+        }
+        
+        if (currentTree.size > 1) {
+            // Remove last item and return the new current path
+            val newTree = currentTree.dropLast(1)
+            _fileTreeLiveData.value = newTree
+            val parentPath = newTree.last()[0]
+            _currentFileValue.value = parentPath
+            return parentPath
+        } else {
+            // Only one item in tree, check if it's root
+            val lastPath = currentTree.last()[0]
+            if (lastPath == rootPath) {
+                // At root, clear tree and return null to close app
+                _fileTreeLiveData.value = emptyList()
+                return null
+            } else {
+                // Not at root, go to root
+                _fileTreeLiveData.value = emptyList()
+                _currentFileValue.value = rootPath
+                return rootPath
+            }
+        }
     }
 }

@@ -35,13 +35,14 @@ class MusicPlayerActivity : AppCompatActivity() {
     private lateinit var musicDuration: TextView
     private lateinit var playPauseButton: ImageButton
     private lateinit var loopButton: ImageButton
-    private lateinit var minimizeButton: ImageButton
     private lateinit var backButton: ImageButton
     private lateinit var nextButton: ImageButton
     private lateinit var previousButton: ImageButton
+    private lateinit var closeButton: ImageButton
 
     private var musicPlayerService: MusicPlayerService? = null
     private var isBound = false
+    private var isSeekBarTracking = false
     private val handler = Handler(Looper.getMainLooper())
 
     private val connection = object : ServiceConnection {
@@ -60,10 +61,39 @@ class MusicPlayerActivity : AppCompatActivity() {
     private val musicStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == MusicPlayerService.ACTION_STATE_UPDATE) {
-                updatePlayPauseButton()
-                updateLoopButton()
-                musicFileName.text = musicPlayerService?.getTrackName()
+                updateUI(intent)
             }
+        }
+    }
+
+    private fun updateUI(intent: Intent) {
+        val isPlaying = intent.getBooleanExtra(MusicPlayerService.EXTRA_IS_PLAYING, false)
+        val isRepeatEnabled = intent.getBooleanExtra(MusicPlayerService.EXTRA_IS_REPEAT, false)
+        val trackName = intent.getStringExtra(MusicPlayerService.EXTRA_TRACK_NAME)
+        val duration = intent.getIntExtra(MusicPlayerService.EXTRA_DURATION, 0)
+        val position = intent.getIntExtra(MusicPlayerService.EXTRA_POSITION, 0)
+
+        if (trackName != null) {
+            musicFileName.text = trackName
+        }
+        
+        if (isPlaying) {
+            playPauseButton.setImageResource(R.drawable.baseline_pause_circle_outline_24)
+        } else {
+            playPauseButton.setImageResource(R.drawable.baseline_play_circle_outline_24)
+        }
+
+        if (isRepeatEnabled) {
+            loopButton.imageTintList = ContextCompat.getColorStateList(this@MusicPlayerActivity, com.google.android.material.R.color.design_default_color_primary)
+        } else {
+            loopButton.imageTintList = ContextCompat.getColorStateList(this@MusicPlayerActivity, R.color.md_theme_light_onSurfaceVariant)
+        }
+
+        if (!isSeekBarTracking) {
+            musicSeekBar.max = duration
+            musicSeekBar.progress = position
+            musicCurrentPosition.text = formatDuration(position)
+            musicDuration.text = formatDuration(duration)
         }
     }
 
@@ -101,10 +131,10 @@ class MusicPlayerActivity : AppCompatActivity() {
         musicDuration = findViewById(R.id.musicDuration)
         playPauseButton = findViewById(R.id.playPauseButton)
         loopButton = findViewById(R.id.loopButton)
-        minimizeButton = findViewById(R.id.minimizeButton)
         backButton = findViewById(R.id.backButton)
         nextButton = findViewById(R.id.nextButton)
         previousButton = findViewById(R.id.previousButton)
+        closeButton = findViewById(R.id.closeButton)
 
 
         playPauseButton.setOnClickListener {
@@ -112,7 +142,7 @@ class MusicPlayerActivity : AppCompatActivity() {
         }
 
         loopButton.setOnClickListener {
-            musicPlayerService?.toggleLooping()
+            musicPlayerService?.toggleRepeat()
         }
 
         nextButton.setOnClickListener {
@@ -123,28 +153,34 @@ class MusicPlayerActivity : AppCompatActivity() {
             musicPlayerService?.playPreviousSong()
         }
 
-        minimizeButton.setOnClickListener {
+        closeButton.setOnClickListener {
+            musicPlayerService?.stopMusic()
             finish()
         }
 
         backButton.setOnClickListener {
-            handleBackNavigation()
+            finish()
         }
 
         onBackPressedDispatcher.addCallback(this, object: OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                handleBackNavigation()
+                finish()
             }
         })
 
         musicSeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 if (fromUser) {
-                    musicPlayerService?.seekTo(progress)
+                    musicCurrentPosition.text = formatDuration(progress)
                 }
             }
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {
+                isSeekBarTracking = true
+            }
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                isSeekBarTracking = false
+                musicPlayerService?.seekTo(seekBar?.progress ?: 0)
+            }
         })
     }
 
@@ -166,15 +202,11 @@ class MusicPlayerActivity : AppCompatActivity() {
     }
 
     private fun handleBackNavigation() {
-        stopService(Intent(this, MusicPlayerService::class.java))
         if (isTaskRoot) {
             val intent = Intent(this, MainActivity::class.java)
-            val stackBuilder = TaskStackBuilder.create(this)
-            stackBuilder.addNextIntentWithParentStack(intent)
-            stackBuilder.startActivities()
-        } else {
-            finish()
+            startActivity(intent)
         }
+        finish()
     }
 
     private fun initializeUI() {
@@ -212,7 +244,7 @@ class MusicPlayerActivity : AppCompatActivity() {
     }
 
     private fun updateLoopButton() {
-        if (musicPlayerService?.isLooping() == true) {
+        if (musicPlayerService?.isRepeatEnabled() == true) {
             loopButton.imageTintList = ContextCompat.getColorStateList(this, com.google.android.material.R.color.design_default_color_primary)
         } else {
             loopButton.imageTintList = ContextCompat.getColorStateList(this, R.color.md_theme_light_onSurfaceVariant)

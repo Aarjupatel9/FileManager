@@ -28,7 +28,6 @@ import com.mhk.filemanager.data.model.Constants
 import com.mhk.filemanager.data.model.FileEntry
 import com.mhk.filemanager.databinding.ItemFileBinding
 import com.mhk.filemanager.services.MusicPlayerService
-import com.mhk.filemanager.ui.player.FileMusicPlayer
 import com.mhk.filemanager.utils.Permissions
 import com.mhk.filemanager.viewmodal.FileManagerViewModel
 import java.io.File
@@ -192,9 +191,6 @@ class FileAdapter(
                 putStringArrayListExtra("playlist", audioFiles)
             }
             ContextCompat.startForegroundService(context, serviceIntent)
-
-            val musicPlayerDialog = FileMusicPlayer(file)
-            musicPlayerDialog.show(context.supportFragmentManager, "FileMusicPlayer")
             return
         }
         if (file.mimetype != "dir") {
@@ -243,7 +239,7 @@ class FileAdapter(
 
         AlertDialog.Builder(context)
             .setTitle(R.string.move_to_playlist)
-            .setAdapter(adapter) { dialog, which ->
+            .setAdapter(adapter) { _, which ->
                 if (which == 0) {
                     // Create New Playlist
                     showCreatePlaylistDialog(fileEntry)

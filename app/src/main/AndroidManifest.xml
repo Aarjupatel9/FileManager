@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     package="com.mhk.filemanager">
+ 
 
     <!-- Permissions for Android 9 and below -->
     <uses-feature
@@ -15,8 +16,6 @@
     <uses-permission
         android:name="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
         tools:ignore="ProtectedPermissions" />
-
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission
         android:name="android.permission.WRITE_SETTINGS"
         android:permissionGroup="STORAGE_MANAGEMENT"
@@ -26,36 +25,16 @@
         android:permissionGroup="STORAGE_MANAGEMENT"
         tools:ignore="ProtectedPermissions" />
 
-    <uses-permission
-        android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:permissionGroup="STORAGE_MANAGEMENT" />
-    <uses-permission
-        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:permissionGroup="STORAGE_MANAGEMENT"
-        tools:ignore="SelectedPhotoAccess" />
-    <uses-permission
-        android:name="android.permission.READ_MEDIA_IMAGES"
-        android:permissionGroup="STORAGE_MANAGEMENT"
-        tools:ignore="SelectedPhotoAccess" />
-    <uses-permission
-        android:name="android.permission.READ_MEDIA_VIDEO"
-        android:permissionGroup="STORAGE_MANAGEMENT"
-        tools:ignore="SelectedPhotoAccess" />
-    <uses-permission
-        android:name="android.permission.READ_MEDIA_AUDIO"
-        android:permissionGroup="STORAGE_MANAGEMENT"
-        tools:ignore="SelectedPhotoAccess" />
-    <uses-permission
-        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
-        android:permissionGroup="STORAGE_MANAGEMENT"
-        tools:ignore="ScopedStorage" />
-    <uses-permission
-        android:name="android.permission.CAMERA"
-        android:permissionGroup="STORAGE_MANAGEMENT" />
-    <uses-permission
-        android:name="android.permission.FOREGROUND_SERVICE_CAMERA"
-        android:permissionGroup="STORAGE_MANAGEMENT" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
 
     <permission-group
@@ -95,7 +74,6 @@
         <activity
             android:name=".ui.main.MainActivity"
             android:exported="true"
-            android:permissionGroup="STORAGE_MANAGEMENT"
             android:theme="@style/Theme.FileManager.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -115,9 +93,6 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".utils.TextToSpeechManager"
-            android:exported="true" />
 
         <receiver
             android:name=".services.MyBroadcastReceiver"
