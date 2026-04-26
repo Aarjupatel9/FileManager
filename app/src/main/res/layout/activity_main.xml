@@ -40,6 +40,20 @@
             android:padding="8dp"
             android:src="@drawable/ic_create_new_folder_24"
             app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/japCounterButton"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="?attr/colorOnSurface" />
+
+        <ImageButton
+            android:id="@+id/japCounterButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="16dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Jap Counter"
+            android:padding="8dp"
+            android:src="@drawable/ic_jap_counter"
+            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@+id/libraryButton"
             app:layout_constraintTop_toTopOf="parent"
             app:tint="?attr/colorOnSurface" />

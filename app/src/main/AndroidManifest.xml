@@ -12,6 +12,7 @@
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission
         android:name="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
@@ -80,6 +81,18 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".ui.japcounter.JapCounterActivity"
+            android:exported="false"
+            android:theme="@style/Theme.FileManager.NoActionBar" />
+
+        <activity
+            android:name=".ui.japcounter.JapStatsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.FileManager.NoActionBar" />
+
+        <receiver android:name=".ui.japcounter.JapReminderReceiver" android:exported="false" />
 
         <activity
             android:name=".ui.player.MusicPlayerActivity"

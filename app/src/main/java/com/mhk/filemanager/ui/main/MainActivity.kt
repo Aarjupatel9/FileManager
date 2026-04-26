@@ -164,6 +164,11 @@ class MainActivity : AppCompatActivity() {
             showCreateFolderDialog()
         }
 
+        binding.japCounterButton.setOnClickListener {
+            val intent = Intent(this, com.mhk.filemanager.ui.japcounter.JapCounterActivity::class.java)
+            startActivity(intent)
+        }
+
         binding.mainActivityBackButton.setOnClickListener{
             handleBackAction()
         }
