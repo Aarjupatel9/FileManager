@@ -61,6 +61,16 @@
 - ✅ Bluetooth media controls (play/pause/next/previous)
 - ✅ Stop/Close functionality with notification cleanup
 
+### Universal Counter Features
+- ✅ Universal multi-category target-tracking counter
+- ✅ Daily and lifetime target limits per category
+- ✅ Smart auto-sorting by usage
+- ✅ Haptic feedback toggle
+- ✅ Configurable background reminders (Alarms)
+- ✅ Historical daily counters list view
+- ✅ Cloud sync support (CodeShare integration)
+- ✅ Secure login modal for cloud sync
+
 ### Project Configuration
 - ✅ Updated comprehensive `.gitignore`
 
