@@ -88,18 +88,19 @@ class FileAdapter(
         cursor?.use {
             while (it.moveToNext()) {
                 val id = it.getLong(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID))
-                val name = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME))
-                val data = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA))
+                val name = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)) ?: ""
+                val data = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)) ?: ""
                 val mimeType = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE))
-                val parentId = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.PARENT))
+                val parentIdStr = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.PARENT))
                 val size = it.getLong(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE))
                 val dateModified = it.getLong(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED)) * 1000
 
-                if (!name.startsWith(".")) {
+                if (data.isNotEmpty() && !name.startsWith(".")) {
+                    val parentId = parentIdStr?.toLongOrNull() ?: 0L
                     fileList.add(
                         FileEntry(
                             File(data), id, name, data, mimeType ?: "dir",
-                            parentId.toLong(), false, size, dateModified
+                            parentId, false, size, dateModified
                         )
                     )
                 }
@@ -150,10 +151,12 @@ class FileAdapter(
         val fileData = mutableListOf<String>()
         cursor?.use {
             if (it.moveToFirst()) {
-                val path = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA))
-                val name = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME))
-                fileData.add(path)
-                fileData.add(name)
+                val path = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)) ?: ""
+                val name = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)) ?: ""
+                if (path.isNotEmpty()) {
+                    fileData.add(path)
+                    fileData.add(name)
+                }
             }
         }
         if (fileData.isEmpty()) {
