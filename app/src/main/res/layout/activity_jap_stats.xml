@@ -91,7 +91,7 @@
         </HorizontalScrollView>
     </LinearLayout>
 
-    <ScrollView
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -236,7 +236,7 @@
                 android:nestedScrollingEnabled="false"
                 tools:listitem="@layout/item_jap_history" />
         </LinearLayout>
-    </ScrollView>
+    </androidx.core.widget.NestedScrollView>
 
     <ProgressBar
         android:id="@+id/progressBar"
