@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
@@ -57,6 +59,42 @@
         android:id="@+id/reminderSpinner"
         android:layout_width="match_parent"
         android:layout_height="48dp"
-        android:background="@drawable/item_file_border" />
+        android:background="@drawable/item_file_border"
+        android:layout_marginBottom="16dp" />
 
+    <CheckBox
+        android:id="@+id/vibrate108Checkbox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Vibrate every 108 counts"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Category Color:"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:layout_marginBottom="8dp" />
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp">
+        <LinearLayout
+            android:id="@+id/colorPickerLayout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingVertical="4dp" />
+    </HorizontalScrollView>
+
+    <Button
+        android:id="@+id/disconnectCloudBtn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Disconnect from Cloud"
+        android:textColor="@color/md_theme_light_error"
+        android:backgroundTint="?attr/colorSurfaceVariant"
+        android:visibility="gone"
+        tools:visibility="visible" />
 </LinearLayout>

@@ -65,4 +65,8 @@
     <color name="md_theme_dark_surfaceTint">#8DCDFF</color>
     <color name="md_theme_dark_outlineVariant">#41484D</color>
     <color name="md_theme_dark_scrim">#000000</color>
+
+    <!-- App Specific Colors -->
+    <color name="primary_color">#00658E</color>
+    <color name="chip_stroke_color">#DDE3EA</color>
 </resources>
