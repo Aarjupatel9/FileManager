@@ -324,11 +324,24 @@ class JapStatsActivity : AppCompatActivity() {
                         binding.progressBar.visibility = View.GONE
                         Toast.makeText(this@JapStatsActivity, "Cloud Push Successful", Toast.LENGTH_SHORT).show()
                     }
+                } else {
+                    val errorResponse = try {
+                        conn.errorStream?.bufferedReader()?.use { it.readText() }
+                    } catch (e: Exception) { null }
+                    
+                    val errorMessage = try {
+                        if (errorResponse != null) JSONObject(errorResponse).getString("message") else "Sync Blocked"
+                    } catch(e: Exception) { "Sync Blocked" }
+                    
+                    withContext(Dispatchers.Main) {
+                        binding.progressBar.visibility = View.GONE
+                        Toast.makeText(this@JapStatsActivity, errorMessage, Toast.LENGTH_LONG).show()
+                    }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     binding.progressBar.visibility = View.GONE
-                    Toast.makeText(this@JapStatsActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@JapStatsActivity, "Error: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
         }
