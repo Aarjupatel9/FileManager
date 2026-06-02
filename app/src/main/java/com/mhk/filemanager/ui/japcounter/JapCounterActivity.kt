@@ -95,8 +95,29 @@ class JapCounterActivity : AppCompatActivity() {
 
         binding.tapArea.setOnClickListener {
             if (isVibrateOn) {
-                it.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+                // Use a more premium, clicky haptic feedback constant
+                val hapticType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                    HapticFeedbackConstants.KEYBOARD_RELEASE
+                } else {
+                    HapticFeedbackConstants.KEYBOARD_TAP
+                }
+                it.performHapticFeedback(hapticType)
             }
+            
+            // Premium micro-animation bounce effect on the circular card
+            binding.counterCard.animate()
+                .scaleX(0.92f)
+                .scaleY(0.92f)
+                .setDuration(60)
+                .withEndAction {
+                    binding.counterCard.animate()
+                        .scaleX(1.0f)
+                        .scaleY(1.0f)
+                        .setDuration(120)
+                        .start()
+                }
+                .start()
+
             incrementCount()
         }
 

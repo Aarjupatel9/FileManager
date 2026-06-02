@@ -112,6 +112,14 @@
 - ✅ Fixed a horizontal layout push-out bug in the File Sort Options Dialog that hid the "Playlist Order" row by wrapping the divider and items in a vertical container layout (`sort_dialog.xml`)
 - ✅ Bypassed the redundant playlist open/play choice dialog on folder clicks to directly open playlist folders instantly (`FileAdapter.kt`)
 - ✅ Fixed a bug where folders or files (e.g. "Music") returned from MediaStore with empty or null `DISPLAY_NAME` values were rendered as blank names in the explorer lists and breadcrumbs by fallback resolving to the path segment name (`FileAdapter.kt`)
+- ✅ Modernized the Jap Counter screen with the curved appbar header (`activity_jap_counter.xml`)
+- ✅ Upgraded the circular tap counter bubble layout to a premium Material 3 `MaterialCardView` with primary-accented stroke borders (`activity_jap_counter.xml`)
+- ✅ Added a bouncing card micro-animation and more clicky keyboard haptic feedback to the main circular tap counter area (`JapCounterActivity.kt`)
+- ✅ Modernized the Jap Statistics screen with the curved appbar header (`activity_jap_stats.xml`)
+- ✅ Upgraded the outdated linear layout border styles of the Jap stats grid cards to outlined M3 `MaterialCardView` blocks (`activity_jap_stats.xml`)
+- ✅ Modernized the target configuration dialog input fields to OutlinedBox `TextInputLayout` fields with clear text actions (`dialog_jap_settings.xml`)
+- ✅ Upgraded the Jap history items and Cloud Sync action choices to outlined M3 `MaterialCardView` designs with outline stroke borders (`item_jap_history.xml`, `dialog_sync_choice.xml`)
+
 
 ### Project Configuration
 - ✅ Updated comprehensive `.gitignore`
