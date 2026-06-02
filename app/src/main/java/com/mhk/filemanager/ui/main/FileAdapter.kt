@@ -163,7 +163,10 @@ class FileAdapter(
         cursor?.use {
             if (it.moveToFirst()) {
                 val path = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)) ?: ""
-                val name = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)) ?: ""
+                var name = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)) ?: ""
+                if (name.isEmpty() && path.isNotEmpty()) {
+                    name = File(path).name
+                }
                 if (path.isNotEmpty()) {
                     fileData.add(path)
                     fileData.add(name)
@@ -615,8 +618,11 @@ class FileAdapter(
             cursor?.use {
                 while (it.moveToNext()) {
                     val id = it.getLong(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID))
-                    val name = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)) ?: ""
                     val data = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)) ?: ""
+                    var name = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)) ?: ""
+                    if (name.isEmpty() && data.isNotEmpty()) {
+                        name = File(data).name
+                    }
                     val mimeType = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE))
                     val parentIdStr = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.PARENT))
                     val size = it.getLong(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE))

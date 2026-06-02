@@ -111,6 +111,7 @@
 - ✅ Added high-contrast color highlights to active text labels and a prominent primary container pill background to active sorting buttons in the File Sort Options Dialog (`MainActivity.kt`)
 - ✅ Fixed a horizontal layout push-out bug in the File Sort Options Dialog that hid the "Playlist Order" row by wrapping the divider and items in a vertical container layout (`sort_dialog.xml`)
 - ✅ Bypassed the redundant playlist open/play choice dialog on folder clicks to directly open playlist folders instantly (`FileAdapter.kt`)
+- ✅ Fixed a bug where folders or files (e.g. "Music") returned from MediaStore with empty or null `DISPLAY_NAME` values were rendered as blank names in the explorer lists and breadcrumbs by fallback resolving to the path segment name (`FileAdapter.kt`)
 
 ### Project Configuration
 - ✅ Updated comprehensive `.gitignore`
