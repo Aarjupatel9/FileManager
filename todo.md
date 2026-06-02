@@ -105,6 +105,12 @@
 - ✅ Introduced spacing gaps between the top appbar and file content for a cleaner layout
 - ✅ Upgraded all dialog popups to modern Material 3 `MaterialAlertDialogBuilder` popups (including file management actions, folder creation, renaming, permission prompts, cloud sync, and settings)
 - ✅ Modernized input fields inside creation and rename dialogs with start icons and clear text actions (`create_folder_dialog.xml`, `rename_dialog.xml`)
+- ✅ Redesigned the File Sort Options Dialog layout using a nested Material 3 CardView containing separated rows and bold typography (`sort_dialog.xml`)
+- ✅ Modernized the bottom mini player layout (`music_card_bottom.xml`) with card outline borders, standard primary player buttons, and custom vector media controls
+- ✅ Added continuous package-resolved startup prompting on launch to set the app as the default handler for audio files (`MainActivity.kt`, `AndroidManifest.xml`)
+- ✅ Added high-contrast color highlights to active text labels and a prominent primary container pill background to active sorting buttons in the File Sort Options Dialog (`MainActivity.kt`)
+- ✅ Fixed a horizontal layout push-out bug in the File Sort Options Dialog that hid the "Playlist Order" row by wrapping the divider and items in a vertical container layout (`sort_dialog.xml`)
+- ✅ Bypassed the redundant playlist open/play choice dialog on folder clicks to directly open playlist folders instantly (`FileAdapter.kt`)
 
 ### Project Configuration
 - ✅ Updated comprehensive `.gitignore`

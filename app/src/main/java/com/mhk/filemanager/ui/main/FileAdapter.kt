@@ -221,13 +221,7 @@ class FileAdapter(
             openSelectedFile(file)
             return
         }
-        // Check if folder is inside the music library (i.e., it's a playlist folder)
-        val musicLibraryPath = getMusicLibraryPath()
-        if (file.data.toString().startsWith(musicLibraryPath) && file.data.toString() != musicLibraryPath) {
-            showPlaylistFolderDialog(file)
-        } else {
-            loadMediaFiles(file.data as String)
-        }
+        loadMediaFiles(file.data as String)
     }
 
     private fun getMusicLibraryPath(): String {
@@ -243,22 +237,6 @@ class FileAdapter(
         return lower.endsWith(".mp3") || lower.endsWith(".wav") || lower.endsWith(".flac") ||
                lower.endsWith(".ogg") || lower.endsWith(".aac") || lower.endsWith(".m4a") ||
                lower.endsWith(".opus") || lower.endsWith(".wma") || lower.endsWith(".aiff")
-    }
-
-    private fun showPlaylistFolderDialog(folder: FileEntry) {
-        val options = arrayOf(
-            context.getString(R.string.open_playlist),
-            context.getString(R.string.play_playlist)
-        )
-        com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
-            .setTitle(folder.name)
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> loadMediaFiles(folder.data as String)
-                    1 -> playFolderAsPlaylist(folder.file)
-                }
-            }
-            .show()
     }
 
     fun playFolderAsPlaylist(folder: File) {

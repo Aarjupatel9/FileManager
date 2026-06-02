@@ -175,6 +175,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         setupMusicCard()
+        checkAndPromptDefaultMusicPlayer()
     }
 
     private fun setupMusicCard() {
@@ -258,9 +259,9 @@ class MainActivity : AppCompatActivity() {
             binding.musicCard.cardTrackName.isSelected = true 
             
             if (isPlaying) {
-                binding.musicCard.cardPlayPauseButton.setImageResource(R.drawable.baseline_pause_circle_outline_24)
+                binding.musicCard.cardPlayPauseButton.setImageResource(R.drawable.ic_pause_24)
             } else {
-                binding.musicCard.cardPlayPauseButton.setImageResource(R.drawable.baseline_play_circle_outline_24)
+                binding.musicCard.cardPlayPauseButton.setImageResource(R.drawable.ic_play_arrow_24)
             }
 
             if (isRepeatEnabled) {
@@ -492,10 +493,51 @@ class MainActivity : AppCompatActivity() {
             buttons[Constants.SORT_CONSTANTS.SORT_BY_CUSTOM_ORDER] = customOrder
         }
 
-        val activeColor = getColorFromTheme(this, com.google.android.material.R.attr.colorPrimary)
-        buttons[activeOrder]?.imageTintList = ColorStateList.valueOf(activeColor)
+        val textPrimary = getColorFromTheme(this, com.google.android.material.R.attr.colorPrimary)
+        val textNormal = getColorFromTheme(this, com.google.android.material.R.attr.colorOnSurface)
+
+        val nameText = dialogView.findViewById<android.widget.TextView>(R.id.sortByNameText)
+        val sizeText = dialogView.findViewById<android.widget.TextView>(R.id.sortBySizeText)
+        val dateText = dialogView.findViewById<android.widget.TextView>(R.id.sortByDateText)
+        val customText = dialogView.findViewById<android.widget.TextView>(R.id.sortByCustomOrderText)
+
+        nameText.setTextColor(textNormal)
+        sizeText.setTextColor(textNormal)
+        dateText.setTextColor(textNormal)
+        customText.setTextColor(textNormal)
+
+        when (activeOrder) {
+            Constants.SORT_CONSTANTS.SORT_BY_NAME_ASC, Constants.SORT_CONSTANTS.SORT_BY_NAME_DESC -> {
+                nameText.setTextColor(textPrimary)
+            }
+            Constants.SORT_CONSTANTS.SORT_BY_SIZE_ASC, Constants.SORT_CONSTANTS.SORT_BY_SIZE_DESC -> {
+                sizeText.setTextColor(textPrimary)
+            }
+            Constants.SORT_CONSTANTS.SORT_BY_DATE_ASC, Constants.SORT_CONSTANTS.SORT_BY_DATE_DESC -> {
+                dateText.setTextColor(textPrimary)
+            }
+            Constants.SORT_CONSTANTS.SORT_BY_CUSTOM_ORDER -> {
+                customText.setTextColor(textPrimary)
+            }
+        }
+
+        val activeColor = getColorFromTheme(this, com.google.android.material.R.attr.colorOnPrimaryContainer)
+        val activeBgColor = getColorFromTheme(this, com.google.android.material.R.attr.colorPrimaryContainer)
+        val inactiveColor = getColorFromTheme(this, com.google.android.material.R.attr.colorOnSurfaceVariant)
 
         buttons.forEach { (sortType, button) ->
+            if (sortType == activeOrder) {
+                button.imageTintList = ColorStateList.valueOf(activeColor)
+                button.backgroundTintList = ColorStateList.valueOf(activeBgColor)
+                button.setBackgroundResource(R.drawable.breadcrumb_chip_background)
+            } else {
+                button.imageTintList = ColorStateList.valueOf(inactiveColor)
+                button.backgroundTintList = null
+                val outValue = TypedValue()
+                theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, outValue, true)
+                button.setBackgroundResource(outValue.resourceId)
+            }
+
             button.setOnClickListener {
                 lifecycleScope.launch {
                     settingsManager.setSortOrderForPath(currentPath, sortType)
@@ -666,6 +708,39 @@ class MainActivity : AppCompatActivity() {
         } else {
             // No parent folder, close the app
             finish()
+        }
+    }
+
+    private fun isDefaultMusicPlayer(): Boolean {
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(Uri.parse("file:///dummy.mp3"), "audio/*")
+        }
+        val resolveInfo = packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+        val defaultPackage = resolveInfo?.activityInfo?.packageName
+        return defaultPackage == packageName
+    }
+
+    private fun checkAndPromptDefaultMusicPlayer() {
+        if (!isDefaultMusicPlayer()) {
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle("Set Default Music Player")
+                .setMessage("To enjoy a seamless music playback experience, set File Manager as your default music player.")
+                .setPositiveButton("Set Default") { _, _ ->
+                    try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            startActivity(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))
+                        } else {
+                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.fromParts("package", packageName, null)
+                            }
+                            startActivity(intent)
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(this, "Please set Default Apps in Settings manually", Toast.LENGTH_LONG).show()
+                    }
+                }
+                .setNegativeButton("Later", null)
+                .show()
         }
     }
 
