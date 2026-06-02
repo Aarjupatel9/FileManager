@@ -11,16 +11,18 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/mainAppBar"
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
+        android:layout_height="64dp"
+        android:background="@drawable/appbar_background"
+        android:elevation="4dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
         <ImageButton
             android:id="@+id/mainActivityBackButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="@dimen/main_left_margin"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="16dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/back_to_parent_folder"
             android:padding="8dp"
@@ -30,25 +32,25 @@
             app:layout_constraintTop_toTopOf="parent"
             app:tint="?attr/colorOnSurface" />
 
-        <ImageButton
-            android:id="@+id/createFolderButton"
+        <TextView
+            android:id="@+id/appBarTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="16dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/create_folder"
-            android:padding="8dp"
-            android:src="@drawable/ic_create_new_folder_24"
+            android:layout_marginStart="12dp"
+            android:text="File Explorer"
+            android:textAppearance="?attr/textAppearanceTitleLarge"
+            android:textStyle="bold"
+            android:textColor="?attr/colorOnSurface"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toStartOf="@+id/japCounterButton"
-            app:layout_constraintTop_toTopOf="parent"
-            app:tint="?attr/colorOnSurface" />
+            app:layout_constraintStart_toEndOf="@+id/mainActivityBackButton"
+            app:layout_constraintTop_toTopOf="parent" />
+
 
         <ImageButton
             android:id="@+id/japCounterButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="16dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginEnd="12dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Jap Counter"
             android:padding="8dp"
@@ -60,9 +62,9 @@
 
         <ImageButton
             android:id="@+id/libraryButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="16dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginEnd="12dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/music_library"
             android:padding="8dp"
@@ -74,9 +76,9 @@
 
         <ImageButton
             android:id="@+id/sortButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="@dimen/main_left_margin"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginEnd="16dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/back_to_parent_folder"
             android:padding="8dp"
@@ -92,6 +94,7 @@
         android:id="@+id/horizontalScrollView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
         android:foregroundGravity="center_vertical"
         android:scrollbars="none"
         app:layout_constraintEnd_toEndOf="parent"
@@ -147,17 +150,31 @@
         app:layout_constraintStart_toStartOf="parent" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/addFab"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:contentDescription="Create Folder"
+        android:src="@drawable/baseline_add_24"
+        app:backgroundTint="?attr/colorPrimaryContainer"
+        app:tint="?attr/colorOnPrimaryContainer"
+        app:layout_constraintBottom_toTopOf="@+id/musicCard"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/playAllButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="16dp"
-        android:layout_marginBottom="80dp"
         android:contentDescription="@string/play_all"
         android:src="@drawable/baseline_play_circle_outline_24"
         android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:tint="@android:color/white"
+        app:backgroundTint="?attr/colorSecondaryContainer"
+        app:tint="?attr/colorOnSecondaryContainer"
+        app:layout_constraintBottom_toBottomOf="@+id/addFab"
+        app:layout_constraintEnd_toStartOf="@+id/addFab"
+        app:layout_constraintTop_toTopOf="@+id/addFab"
         tools:visibility="visible" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

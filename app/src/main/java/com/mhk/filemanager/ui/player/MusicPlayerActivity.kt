@@ -80,15 +80,16 @@ class MusicPlayerActivity : AppCompatActivity() {
         }
         
         if (isPlaying) {
-            playPauseButton.setImageResource(R.drawable.baseline_pause_circle_outline_24)
+            playPauseButton.setImageResource(R.drawable.ic_pause_24)
         } else {
-            playPauseButton.setImageResource(R.drawable.baseline_play_circle_outline_24)
+            playPauseButton.setImageResource(R.drawable.ic_play_arrow_24)
         }
+        handleRotation(isPlaying)
 
         if (isRepeatEnabled) {
-            loopButton.imageTintList = ContextCompat.getColorStateList(this@MusicPlayerActivity, com.google.android.material.R.color.design_default_color_primary)
+            loopButton.imageTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#8DCDFF"))
         } else {
-            loopButton.imageTintList = ContextCompat.getColorStateList(this@MusicPlayerActivity, R.color.md_theme_light_onSurfaceVariant)
+            loopButton.imageTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#B0BEC5"))
         }
 
         if (!isSeekBarTracking) {
@@ -270,18 +271,50 @@ class MusicPlayerActivity : AppCompatActivity() {
     }
 
     private fun updatePlayPauseButton() {
-        if (musicPlayerService?.isPlaying() == true) {
-            playPauseButton.setImageResource(R.drawable.baseline_pause_circle_outline_24)
+        val isPlaying = musicPlayerService?.isPlaying() == true
+        if (isPlaying) {
+            playPauseButton.setImageResource(R.drawable.ic_pause_24)
         } else {
-            playPauseButton.setImageResource(R.drawable.baseline_play_circle_outline_24)
+            playPauseButton.setImageResource(R.drawable.ic_play_arrow_24)
         }
+        handleRotation(isPlaying)
     }
 
     private fun updateLoopButton() {
         if (musicPlayerService?.isRepeatEnabled() == true) {
-            loopButton.imageTintList = ContextCompat.getColorStateList(this, com.google.android.material.R.color.design_default_color_primary)
+            loopButton.imageTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#8DCDFF"))
         } else {
-            loopButton.imageTintList = ContextCompat.getColorStateList(this, R.color.md_theme_light_onSurfaceVariant)
+            loopButton.imageTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#B0BEC5"))
+        }
+    }
+
+    private var rotationAnimator: android.animation.ObjectAnimator? = null
+
+    private fun setupRotationAnimation() {
+        val albumArtCard = findViewById<com.google.android.material.card.MaterialCardView>(R.id.albumArtCard)
+        rotationAnimator = android.animation.ObjectAnimator.ofFloat(albumArtCard, "rotation", 0f, 360f).apply {
+            duration = 15000 // 15 seconds per rotation
+            repeatCount = android.animation.ObjectAnimator.INFINITE
+            interpolator = android.view.animation.LinearInterpolator()
+        }
+    }
+
+    private fun handleRotation(isPlaying: Boolean) {
+        if (rotationAnimator == null) {
+            setupRotationAnimation()
+        }
+        if (isPlaying) {
+            if (rotationAnimator?.isStarted == false) {
+                rotationAnimator?.start()
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT && rotationAnimator?.isPaused == true) {
+                rotationAnimator?.resume()
+            }
+        } else {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                rotationAnimator?.pause()
+            } else {
+                rotationAnimator?.cancel()
+            }
         }
     }
 
@@ -311,5 +344,7 @@ class MusicPlayerActivity : AppCompatActivity() {
         }
         unregisterReceiver(musicStateReceiver)
         handler.removeCallbacks(updateSeekBarRunnable)
+        rotationAnimator?.cancel()
+        rotationAnimator = null
     }
 }

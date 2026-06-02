@@ -25,7 +25,7 @@ class Permissions(private var context: AppCompatActivity, var fileAdapter: FileA
             if (Environment.isExternalStorageManager()) {
                 return true
             } else {
-                AlertDialog.Builder(context).setTitle("All Files Access Permission")
+                com.google.android.material.dialog.MaterialAlertDialogBuilder(context).setTitle("All Files Access Permission")
                     .setMessage("This app is a File Manager and requires access to manage all files on your device. Please grant this permission on the next screen.")
                     .setNegativeButton("Cancel") { dialog, _ ->
                         Toast.makeText(
@@ -58,7 +58,7 @@ class Permissions(private var context: AppCompatActivity, var fileAdapter: FileA
                     neededPermissions.add(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 }
 
-                AlertDialog.Builder(context).setTitle("Storage Permission")
+                com.google.android.material.dialog.MaterialAlertDialogBuilder(context).setTitle("Storage Permission")
                     .setMessage("Storage permission is needed to show and manage your files.")
                     .setNegativeButton("Cancel") { dialog, _ ->
                         Toast.makeText(
@@ -114,7 +114,7 @@ class Permissions(private var context: AppCompatActivity, var fileAdapter: FileA
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val alarmManager = context.getSystemService(android.app.AlarmManager::class.java)
             if (alarmManager != null && !alarmManager.canScheduleExactAlarms()) {
-                AlertDialog.Builder(context)
+                com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
                     .setTitle("Exact Alarm Permission")
                     .setMessage("To receive reminders at the exact time you set, please allow 'Alarms & Reminders' for this app in Settings.")
                     .setPositiveButton("Open Settings") { _, _ ->

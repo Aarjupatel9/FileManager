@@ -96,6 +96,15 @@
 ### Modern UI Overhaul & Splash Screen
 - ✅ Added custom Splash Screen (1.5-second delay, Material 3 styles, centered app logo card, custom tagline, and progress indicator)
 - ✅ Registered `SplashActivity` as launcher activity to handle initialization cleanly
+- ✅ Modernized File Explorer screen list items using beautiful MaterialCardViews with dynamic file size/date details (`item_file.xml`, `FileAdapter.kt`)
+- ✅ Overhauled Main Activity header layout: custom bottom-rounded card header with bold title and modern spacing (`activity_main.xml`)
+- ✅ Refined dynamic chip-pill breadcrumbs to highlight the active directory with color primary container tinting (`MainActivity.kt`)
+- ✅ Redesigned Music Player screen with a premium, immersive dark-themed gradient background (`activity_music_player.xml`, `music_player_background.xml`)
+- ✅ Implemented dynamic rotating vinyl disc animations during active playback and modern solid media playback control states (`MusicPlayerActivity.kt`, `ic_play_arrow_24.xml`, `ic_pause_24.xml`)
+- ✅ Relocated folder creation action from the top navbar to a bottom-right FloatingActionButton (`addFab`) showing an option menu popup
+- ✅ Introduced spacing gaps between the top appbar and file content for a cleaner layout
+- ✅ Upgraded all dialog popups to modern Material 3 `MaterialAlertDialogBuilder` popups (including file management actions, folder creation, renaming, permission prompts, cloud sync, and settings)
+- ✅ Modernized input fields inside creation and rename dialogs with start icons and clear text actions (`create_folder_dialog.xml`, `rename_dialog.xml`)
 
 ### Project Configuration
 - ✅ Updated comprehensive `.gitignore`

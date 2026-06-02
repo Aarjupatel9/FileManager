@@ -161,8 +161,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        binding.createFolderButton.setOnClickListener {
-            showCreateFolderDialog()
+        binding.addFab.setOnClickListener { view ->
+            showAddMenu(view)
         }
 
         binding.japCounterButton.setOnClickListener {
@@ -353,11 +353,26 @@ class MainActivity : AppCompatActivity() {
         binding.playAllButton.visibility = if (isInsidePlaylistFolder) android.view.View.VISIBLE else android.view.View.GONE
     }
 
+    private fun showAddMenu(anchor: android.view.View) {
+        val popup = androidx.appcompat.widget.PopupMenu(this, anchor)
+        popup.menu.add(0, 1, 0, "New Folder")
+        popup.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                1 -> {
+                    showCreateFolderDialog()
+                    true
+                }
+                else -> false
+            }
+        }
+        popup.show()
+    }
+
     private fun showCreateFolderDialog() {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.create_folder_dialog, null)
         val folderNameEditText = dialogView.findViewById<EditText>(R.id.folderNameEditText)
 
-        val dialog = AlertDialog.Builder(this)
+        val dialog = com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(R.string.create_folder)
             .setView(dialogView)
             .setPositiveButton(R.string.create) { _, _ ->
@@ -508,15 +523,26 @@ class MainActivity : AppCompatActivity() {
         for (i in openedFileTree.indices) {
             val textView = TextView(linearLayout.context)
             textView.text = openedFileTree[i][1]
-            textView.setPadding(16, 8, 16, 8)
-            textView.textSize = 16f
-            val colorPrimary = getColorFromTheme(linearLayout.context, com.google.android.material.R.attr.colorPrimary)
-            textView.setTextColor(colorPrimary)
+            textView.setPadding(32, 16, 32, 16)
+            textView.textSize = 14f
+            
+            // Highlight the active directory differently from parent directories
+            val isLast = i == openedFileTree.size - 1
+            textView.setBackgroundResource(R.drawable.breadcrumb_chip_background)
+            if (isLast) {
+                textView.backgroundTintList = ColorStateList.valueOf(getColorFromTheme(linearLayout.context, com.google.android.material.R.attr.colorPrimaryContainer))
+                textView.setTextColor(getColorFromTheme(linearLayout.context, com.google.android.material.R.attr.colorOnPrimaryContainer))
+                textView.setTypeface(null, android.graphics.Typeface.BOLD)
+            } else {
+                textView.backgroundTintList = ColorStateList.valueOf(getColorFromTheme(linearLayout.context, com.google.android.material.R.attr.colorSurfaceVariant))
+                textView.setTextColor(getColorFromTheme(linearLayout.context, com.google.android.material.R.attr.colorOnSurfaceVariant))
+            }
+
             val layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                setMargins(2, 0, 2, 0)
+                setMargins(4, 0, 4, 0)
             }
             textView.layoutParams = layoutParams
             textView.setOnClickListener {
@@ -531,10 +557,10 @@ class MainActivity : AppCompatActivity() {
                 val arrowColor = typedValue.data
                 imageView.setColorFilter(arrowColor)
                 val imageParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
+                    12, // smaller arrow size for cleaner look
+                    12
                 ).apply {
-                    setMargins(8, 0, 8, 0)
+                    setMargins(4, 0, 4, 0)
                 }
                 imageView.layoutParams = imageParams
                 linearLayout.addView(imageView)

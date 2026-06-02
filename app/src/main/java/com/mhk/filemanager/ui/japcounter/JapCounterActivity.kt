@@ -119,7 +119,7 @@ class JapCounterActivity : AppCompatActivity() {
 
     private fun showCloudConnectPrompt() {
         sharedPrefs.edit().putLong("last_cloud_prompt_timestamp", System.currentTimeMillis()).apply()
-        AlertDialog.Builder(this)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle("Cloud Sync Available")
             .setMessage("Protect your data! Connect to https://codeshare.auctionng.org to securely backup your counts and sync across devices.")
             .setPositiveButton("Login/Sync Now") { _, _ ->
@@ -291,7 +291,7 @@ class JapCounterActivity : AppCompatActivity() {
     }
 
     private fun showAddCategoryDialog() {
-        val builder = AlertDialog.Builder(this)
+        val builder = com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
         builder.setTitle("Add New Category")
         val input = EditText(this)
         builder.setView(input)
@@ -312,7 +312,7 @@ class JapCounterActivity : AppCompatActivity() {
     
     private fun showSettingsDialog() {
         if (currentCategory.isEmpty()) return
-        val builder = AlertDialog.Builder(this)
+        val builder = com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
         val view = layoutInflater.inflate(R.layout.dialog_jap_settings, null)
         builder.setView(view)
         

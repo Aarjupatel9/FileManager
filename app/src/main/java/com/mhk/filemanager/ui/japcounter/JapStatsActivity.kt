@@ -208,7 +208,7 @@ class JapStatsActivity : AppCompatActivity() {
         }
 
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_sync_choice, null)
-        val dialog = AlertDialog.Builder(this)
+        val dialog = com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setView(dialogView)
             .create()
 
@@ -230,7 +230,7 @@ class JapStatsActivity : AppCompatActivity() {
     }
 
     private fun confirmPull(token: String) {
-        AlertDialog.Builder(this)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle("Pull from Cloud")
             .setMessage("This will overwrite your local counter data with the data from the server. Are you sure?")
             .setPositiveButton("Yes, Pull Data") { _, _ -> performPull(token) }
@@ -243,7 +243,7 @@ class JapStatsActivity : AppCompatActivity() {
         val emailEdit = dialogView.findViewById<EditText>(R.id.emailEdit)
         val passwordEdit = dialogView.findViewById<EditText>(R.id.passwordEdit)
 
-        AlertDialog.Builder(this)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle("Login to CodeShare")
             .setView(dialogView)
             .setPositiveButton("Login") { _, _ ->

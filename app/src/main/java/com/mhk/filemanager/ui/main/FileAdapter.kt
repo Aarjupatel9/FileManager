@@ -192,6 +192,16 @@ class FileAdapter(
                     else -> R.drawable.ic_file
                 }
             )
+
+            // Bind file metadata details (size and date)
+            if (fileEntry.mimetype == "dir") {
+                binding.fileDetails.text = "Folder"
+            } else {
+                val sizeStr = formatFileSize(fileEntry.size)
+                val dateStr = formatDate(fileEntry.dateModified)
+                binding.fileDetails.text = "$sizeStr • $dateStr"
+            }
+
             binding.itemContainer.setOnClickListener { handleFileClick(fileEntry) }
             binding.menuButton.setOnClickListener { showPopupMenu(it, fileEntry) }
         }
@@ -240,7 +250,7 @@ class FileAdapter(
             context.getString(R.string.open_playlist),
             context.getString(R.string.play_playlist)
         )
-        androidx.appcompat.app.AlertDialog.Builder(context)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
             .setTitle(folder.name)
             .setItems(options) { _, which ->
                 when (which) {
@@ -328,7 +338,7 @@ class FileAdapter(
     }
 
     private fun confirmRemoveFromPlaylist(fileEntry: FileEntry) {
-        androidx.appcompat.app.AlertDialog.Builder(context)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
             .setTitle(fileEntry.name)
             .setMessage(R.string.remove_from_playlist_confirm)
             .setPositiveButton(R.string.remove_from_playlist) { _, _ ->
@@ -349,7 +359,7 @@ class FileAdapter(
     }
 
     private fun confirmDeletePlaylist(fileEntry: FileEntry) {
-        androidx.appcompat.app.AlertDialog.Builder(context)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
             .setTitle(fileEntry.name)
             .setMessage(R.string.delete_playlist_confirm)
             .setPositiveButton(R.string.delete_playlist) { _, _ ->
@@ -397,7 +407,7 @@ class FileAdapter(
         else
             context.getString(R.string.move_to_playlist)
 
-        AlertDialog.Builder(context)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
             .setTitle(title)
             .setAdapter(adapter) { _, which ->
                 if (which == 0) {
@@ -415,7 +425,7 @@ class FileAdapter(
         val dialogView = LayoutInflater.from(context).inflate(R.layout.create_folder_dialog, null)
         val folderNameEditText = dialogView.findViewById<EditText>(R.id.folderNameEditText)
 
-        AlertDialog.Builder(context)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
             .setTitle(R.string.create_new_playlist)
             .setView(dialogView)
             .setPositiveButton(R.string.create) { _, _ ->
@@ -460,7 +470,7 @@ class FileAdapter(
         val dialogView = LayoutInflater.from(context).inflate(R.layout.rename_dialog, null)
         val newNameEditText = dialogView.findViewById<EditText>(R.id.newNameEditText)
         newNameEditText.setText(fileEntry.name)
-        val dialog = AlertDialog.Builder(context)
+        val dialog = com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
             .setTitle(R.string.rename_file)
             .setView(dialogView)
             .setPositiveButton(R.string.save, null)
@@ -563,6 +573,19 @@ class FileAdapter(
             return name.slice(0..maxVisibleFileNameLength) + "..."
         }
         return name
+    }
+
+    private fun formatFileSize(size: Long): String {
+        if (size <= 0) return "0 B"
+        val units = arrayOf("B", "KB", "MB", "GB", "TB")
+        val digitGroups = (Math.log10(size.toDouble()) / Math.log10(1024.0)).toInt()
+        val index = if (digitGroups in units.indices) digitGroups else units.size - 1
+        return String.format(java.util.Locale.US, "%.1f %s", size / Math.pow(1024.0, index.toDouble()), units[index])
+    }
+
+    private fun formatDate(timeMs: Long): String {
+        val df = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault())
+        return df.format(java.util.Date(timeMs))
     }
 
     companion object {
