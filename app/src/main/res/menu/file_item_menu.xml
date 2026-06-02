@@ -5,5 +5,14 @@
         android:title="@string/rename" />
     <item
         android:id="@+id/action_move"
-        android:title="@string/move" />
+        android:title="@string/move_to_playlist" />
+    <item
+        android:id="@+id/action_remove_from_playlist"
+        android:title="@string/remove_from_playlist" />
+    <item
+        android:id="@+id/action_play_playlist"
+        android:title="@string/play_playlist" />
+    <item
+        android:id="@+id/action_delete_playlist"
+        android:title="@string/delete_playlist" />
 </menu>

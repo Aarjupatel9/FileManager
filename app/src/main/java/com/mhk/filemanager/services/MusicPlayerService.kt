@@ -7,6 +7,9 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.media.MediaPlayer
 import android.os.Binder
 import android.os.Build
@@ -49,6 +52,40 @@ class MusicPlayerService : Service() {
     private var isProgressRunnableRunning = false
     private var isPrepared = false
 
+    // Audio Focus
+    private lateinit var audioManager: AudioManager
+    private var audioFocusRequest: AudioFocusRequest? = null
+    private var wasPlayingBeforeFocusLoss = false
+
+    private val audioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
+        when (focusChange) {
+            AudioManager.AUDIOFOCUS_LOSS -> {
+                // Permanent loss (another app took focus) — pause
+                if (isPlaying()) { mediaPlayer?.pause(); wasPlayingBeforeFocusLoss = false }
+                updatePlaybackState(); updateNotification(); broadcastState()
+            }
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
+                // Transient loss (phone call, navigation) — pause, remember state
+                wasPlayingBeforeFocusLoss = isPlaying()
+                if (wasPlayingBeforeFocusLoss) mediaPlayer?.pause()
+                updatePlaybackState(); updateNotification(); broadcastState()
+            }
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                // Lower volume briefly (e.g. notification sound)
+                mediaPlayer?.setVolume(0.3f, 0.3f)
+            }
+            AudioManager.AUDIOFOCUS_GAIN -> {
+                // Focus returned — restore volume and resume if we were playing
+                mediaPlayer?.setVolume(1.0f, 1.0f)
+                if (wasPlayingBeforeFocusLoss) {
+                    mediaPlayer?.start()
+                    wasPlayingBeforeFocusLoss = false
+                    updatePlaybackState(); updateNotification(); broadcastState()
+                }
+            }
+        }
+    }
+
 
     companion object {
         const val CHANNEL_ID = "MusicPlayerServiceChannel_v3"
@@ -68,6 +105,7 @@ class MusicPlayerService : Service() {
     override fun onCreate() {
         super.onCreate()
         notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         createNotificationChannel()
 
         mediaSession = MediaSessionCompat(this, "MusicPlayerService")
@@ -106,8 +144,14 @@ class MusicPlayerService : Service() {
         currentFilePath = filePath
         val file = File(filePath)
         currentTrackName = file.name
-        isPrepared = false // Reset prepared state
-        
+        isPrepared = false
+
+        // Request audio focus before playing
+        val focusGranted = requestAudioFocus()
+        if (!focusGranted) {
+            Log.w("MusicPlayerService", "Audio focus not granted, playing anyway")
+        }
+
         mediaPlayer?.release()
 
         mediaPlayer = MediaPlayer().apply {
@@ -229,11 +273,12 @@ class MusicPlayerService : Service() {
         isPrepared = false
         isProgressRunnableRunning = false
         handler.removeCallbacks(updateSeekBarRunnable)
-        
+
+        abandonAudioFocus()
         mediaSession.isActive = false
         stopForeground(STOP_FOREGROUND_REMOVE)
         notificationManager.cancel(1001)
-        
+
         // Broadcast that playback has stopped
         val intent = Intent(ACTION_STATE_UPDATE).apply {
             setPackage(packageName)
@@ -244,6 +289,39 @@ class MusicPlayerService : Service() {
         }
         sendBroadcast(intent)
         stopSelf()
+    }
+
+    private fun requestAudioFocus(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build()
+                )
+                .setOnAudioFocusChangeListener(audioFocusChangeListener)
+                .setAcceptsDelayedFocusGain(true)
+                .build()
+            audioFocusRequest = focusRequest
+            audioManager.requestAudioFocus(focusRequest) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager.requestAudioFocus(
+                audioFocusChangeListener,
+                AudioManager.STREAM_MUSIC,
+                AudioManager.AUDIOFOCUS_GAIN
+            ) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        }
+    }
+
+    private fun abandonAudioFocus() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            audioFocusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager.abandonAudioFocus(audioFocusChangeListener)
+        }
     }
 
     private fun startUpdatingSeekBar() {
@@ -428,6 +506,7 @@ class MusicPlayerService : Service() {
         handler.removeCallbacks(updateSeekBarRunnable)
         mediaPlayer?.release()
         mediaPlayer = null
+        abandonAudioFocus()
         mediaSession.release()
     }
 }

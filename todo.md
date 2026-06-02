@@ -71,6 +71,28 @@
 - ✅ Cloud sync support (CodeShare integration)
 - ✅ Secure login modal for cloud sync
 
+### Music Player Enhancements (v2)
+- ✅ App registered as system audio handler (ACTION_VIEW for audio/*)
+- ✅ Expanded audio format support (.flac, .ogg, .aac, .m4a, .opus, .wma, .aiff)
+- ✅ Mini music card tappable anywhere to open full player
+- ✅ Folder-as-Playlist: tap playlist folder → Open or Play dialog
+- ✅ Play All FAB inside playlist sub-folders
+- ✅ Add song to playlist (Move to Playlist)
+- ✅ Move song between playlists (Move to Another Playlist)
+- ✅ Remove song from playlist (with confirmation)
+- ✅ Delete entire playlist folder (with confirmation)
+- ✅ Rename playlist folder
+- ✅ One-time default music player prompt in MusicPlayerActivity
+- ✅ Path-specific sort order preferences (independent sort per folder)
+- ✅ Custom Playlist Order (4th option) in playlists with manual song reordering via drag-and-drop (ItemTouchHelper)
+- ✅ Automatically play playlists in their customized/path-specific sort order
+
+### Permission Flow & UX Fixes
+- ✅ Coordinated storage permission flow to avoid duplicate dialogs
+- ✅ Added `onResume()` checking to automatically reload/load file list when returning from system permission Settings
+- ✅ Bypassed redundant media permissions (`READ_MEDIA_*`) on Android 11+ when broad All Files Access (`MANAGE_EXTERNAL_STORAGE`) is granted
+- ✅ Added `SCHEDULE_EXACT_ALARM` / `USE_EXACT_ALARM` checks for JapCounter reminders
+
 ### Project Configuration
 - ✅ Updated comprehensive `.gitignore`
 

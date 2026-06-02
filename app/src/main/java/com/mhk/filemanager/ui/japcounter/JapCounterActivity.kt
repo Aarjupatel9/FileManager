@@ -39,6 +39,7 @@ import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.mhk.filemanager.utils.Permissions
 
 class JapCounterActivity : AppCompatActivity() {
 
@@ -68,6 +69,9 @@ class JapCounterActivity : AppCompatActivity() {
         sharedPrefs = getSharedPreferences("jap_prefs", Context.MODE_PRIVATE)
         isVibrateOn = sharedPrefs.getBoolean("vibrate", true)
         updateVibrateIcon()
+
+        // Request exact alarm permission for reminders (Android 12+)
+        Permissions(this, null).requestExactAlarmPermission()
 
         loadData()
 

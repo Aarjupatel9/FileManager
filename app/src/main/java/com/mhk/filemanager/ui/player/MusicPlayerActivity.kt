@@ -15,6 +15,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.provider.MediaStore
+import android.provider.Settings
 import android.widget.ImageButton
 import android.widget.SeekBar
 import android.widget.TextView
@@ -22,6 +23,7 @@ import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import com.google.android.material.snackbar.Snackbar
 import com.mhk.filemanager.R
 import com.mhk.filemanager.services.MusicPlayerService
 import com.mhk.filemanager.ui.main.MainActivity
@@ -110,8 +112,10 @@ class MusicPlayerActivity : AppCompatActivity() {
                 val parentDir = File(filePath).parentFile
                 val playlist = parentDir?.listFiles { file ->
                     val name = file.name.lowercase()
-                    name.endsWith(".mp3") || name.endsWith(".wav")
-                }?.map { it.absolutePath }?.toCollection(ArrayList()) ?: arrayListOf(filePath)
+                    name.endsWith(".mp3") || name.endsWith(".wav") || name.endsWith(".flac") ||
+                    name.endsWith(".ogg") || name.endsWith(".aac") || name.endsWith(".m4a") ||
+                    name.endsWith(".opus") || name.endsWith(".wma") || name.endsWith(".aiff")
+                }?.sortedBy { it.name }?.map { it.absolutePath }?.toCollection(ArrayList()) ?: arrayListOf(filePath)
 
                 val serviceIntent = Intent(this, MusicPlayerService::class.java).apply {
                     putExtra("filePath", filePath)
@@ -182,6 +186,36 @@ class MusicPlayerActivity : AppCompatActivity() {
                 musicPlayerService?.seekTo(seekBar?.progress ?: 0)
             }
         })
+
+        showDefaultPlayerPromptOnce()
+    }
+
+    private fun showDefaultPlayerPromptOnce() {
+        val prefs = getSharedPreferences("music_player_prefs", Context.MODE_PRIVATE)
+        val shown = prefs.getBoolean("default_player_prompt_shown", false)
+        if (shown) return
+
+        val rootView = findViewById<android.view.View>(android.R.id.content)
+        Snackbar.make(rootView, "Set File Manager as your default music player?", Snackbar.LENGTH_LONG)
+            .setAction("Set Default") {
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        // Android 12+ — open Default Apps settings directly
+                        startActivity(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))
+                    } else {
+                        // Older — open App Info where user can set defaults
+                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = Uri.fromParts("package", packageName, null)
+                        }
+                        startActivity(intent)
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(this, "Open Settings > Apps > Default Apps manually", Toast.LENGTH_LONG).show()
+                }
+            }
+            .show()
+
+        prefs.edit().putBoolean("default_player_prompt_shown", true).apply()
     }
 
     private fun getPathFromUri(uri: Uri?): String? {
