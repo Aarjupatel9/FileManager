@@ -113,45 +113,8 @@ class FileAdapter(
 
             Log.d("MainActivity", "loadFiles start directoryPath : $directoryPath with order : $resolvedSortOrder")
 
-            val fileList = withContext(Dispatchers.IO) {
-                val externalUri: Uri = MediaStore.Files.getContentUri("external")
-                val projection = arrayOf(
-                    MediaStore.Files.FileColumns._ID,
-                    MediaStore.Files.FileColumns.DISPLAY_NAME,
-                    MediaStore.Files.FileColumns.DATA,
-                    MediaStore.Files.FileColumns.MIME_TYPE,
-                    MediaStore.Files.FileColumns.PARENT,
-                    MediaStore.Files.FileColumns.SIZE,
-                    MediaStore.Files.FileColumns.DATE_MODIFIED,
-                )
-
-                val selection = "${MediaStore.Files.FileColumns.DATA} LIKE ? AND ${MediaStore.Files.FileColumns.DATA} NOT LIKE ? AND ${MediaStore.Files.FileColumns.DATA} != ?"
-                val selectionArgs = arrayOf("$directoryPath%", "$directoryPath/%/%", directoryPath)
-
-                val cursor = context.contentResolver.query(externalUri, projection, selection, selectionArgs, null)
-                val list = mutableListOf<FileEntry>()
-                cursor?.use {
-                    while (it.moveToNext()) {
-                        val id = it.getLong(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID))
-                        val name = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)) ?: ""
-                        val data = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)) ?: ""
-                        val mimeType = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE))
-                        val parentIdStr = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.PARENT))
-                        val size = it.getLong(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE))
-                        val dateModified = it.getLong(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED)) * 1000
-
-                        if (data.isNotEmpty() && !name.startsWith(".")) {
-                            val parentId = parentIdStr?.toLongOrNull() ?: 0L
-                            list.add(
-                                FileEntry(
-                                    File(data), id, name, data, mimeType ?: "dir",
-                                    parentId, false, size, dateModified
-                                )
-                            )
-                        }
-                    }
-                }
-                list
+            val fileList = getPreloadedFiles(directoryPath) ?: withContext(Dispatchers.IO) {
+                queryFilesSync(context, directoryPath)
             }
 
             val directories = fileList.filter { it.mimetype == "dir" }
@@ -600,5 +563,76 @@ class FileAdapter(
             return name.slice(0..maxVisibleFileNameLength) + "..."
         }
         return name
+    }
+
+    companion object {
+        private var preloadedPath: String? = null
+        private var preloadedFiles: List<FileEntry>? = null
+
+        fun preloadFiles(context: android.content.Context, scope: kotlinx.coroutines.CoroutineScope, path: String) {
+            preloadedPath = path
+            scope.launch(Dispatchers.IO) {
+                try {
+                    val list = queryFilesSync(context, path)
+                    preloadedFiles = list
+                    Log.d("FileAdapter", "Preloaded ${list.size} files for path: $path")
+                } catch (e: Exception) {
+                    Log.e("FileAdapter", "Preload error", e)
+                }
+            }
+        }
+
+        fun getPreloadedFiles(path: String): List<FileEntry>? {
+            return if (path == preloadedPath) {
+                val files = preloadedFiles
+                preloadedPath = null
+                preloadedFiles = null
+                Log.d("FileAdapter", "Consumed preloaded files cache for path: $path")
+                files
+            } else {
+                null
+            }
+        }
+
+        fun queryFilesSync(context: android.content.Context, directoryPath: String): List<FileEntry> {
+            val externalUri: Uri = MediaStore.Files.getContentUri("external")
+            val projection = arrayOf(
+                MediaStore.Files.FileColumns._ID,
+                MediaStore.Files.FileColumns.DISPLAY_NAME,
+                MediaStore.Files.FileColumns.DATA,
+                MediaStore.Files.FileColumns.MIME_TYPE,
+                MediaStore.Files.FileColumns.PARENT,
+                MediaStore.Files.FileColumns.SIZE,
+                MediaStore.Files.FileColumns.DATE_MODIFIED,
+            )
+
+            val selection = "${MediaStore.Files.FileColumns.DATA} LIKE ? AND ${MediaStore.Files.FileColumns.DATA} NOT LIKE ? AND ${MediaStore.Files.FileColumns.DATA} != ?"
+            val selectionArgs = arrayOf("$directoryPath%", "$directoryPath/%/%", directoryPath)
+
+            val cursor = context.contentResolver.query(externalUri, projection, selection, selectionArgs, null)
+            val list = mutableListOf<FileEntry>()
+            cursor?.use {
+                while (it.moveToNext()) {
+                    val id = it.getLong(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID))
+                    val name = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)) ?: ""
+                    val data = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)) ?: ""
+                    val mimeType = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE))
+                    val parentIdStr = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.PARENT))
+                    val size = it.getLong(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE))
+                    val dateModified = it.getLong(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED)) * 1000
+
+                    if (data.isNotEmpty() && !name.startsWith(".")) {
+                        val parentId = parentIdStr?.toLongOrNull() ?: 0L
+                        list.add(
+                            FileEntry(
+                                File(data), id, name, data, mimeType ?: "dir",
+                                parentId, false, size, dateModified
+                            )
+                        )
+                    }
+                }
+            }
+            return list
+        }
     }
 }

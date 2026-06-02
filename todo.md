@@ -93,6 +93,10 @@
 - ✅ Bypassed redundant media permissions (`READ_MEDIA_*`) on Android 11+ when broad All Files Access (`MANAGE_EXTERNAL_STORAGE`) is granted
 - ✅ Added `SCHEDULE_EXACT_ALARM` / `USE_EXACT_ALARM` checks for JapCounter reminders
 
+### Modern UI Overhaul & Splash Screen
+- ✅ Added custom Splash Screen (1.5-second delay, Material 3 styles, centered app logo card, custom tagline, and progress indicator)
+- ✅ Registered `SplashActivity` as launcher activity to handle initialization cleanly
+
 ### Project Configuration
 - ✅ Updated comprehensive `.gitignore`
 

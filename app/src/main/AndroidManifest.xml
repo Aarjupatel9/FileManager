@@ -80,7 +80,7 @@
         </receiver>
 
         <activity
-            android:name=".ui.main.MainActivity"
+            android:name=".ui.main.SplashActivity"
             android:exported="true"
             android:theme="@style/Theme.FileManager.NoActionBar">
             <intent-filter>
@@ -88,6 +88,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".ui.main.MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.FileManager.NoActionBar" />
 
         <activity
             android:name=".ui.japcounter.JapCounterActivity"
