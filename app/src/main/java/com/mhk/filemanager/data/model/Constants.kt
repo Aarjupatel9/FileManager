@@ -13,6 +13,7 @@ object Constants {
         const val SORT_BY_SIZE_DESC = 4
         const val SORT_BY_DATE_ASC = 5
         const val SORT_BY_DATE_DESC = 6
+        const val SORT_BY_CUSTOM_ORDER = 7
     }
 
     val SORT_TYPE = arrayOf(
@@ -21,6 +22,7 @@ object Constants {
         "sortBySizeAsc",
         "sortBySizeDesc",
         "sortByDateAsc",
-        "sortByDateDesc"
+        "sortByDateDesc",
+        "sortByCustomOrder"
     )
 }

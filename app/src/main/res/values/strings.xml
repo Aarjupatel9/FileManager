@@ -50,8 +50,24 @@
     <string name="folder_creation_failed">Failed to create folder.</string>
     <string name="move">Move</string>
     <string name="move_to_playlist">Move to Playlist</string>
+    <string name="move_to_another_playlist">Move to Another Playlist</string>
     <string name="create_new_playlist">Create New Playlist</string>
     <string name="move_success">File moved successfully.</string>
     <string name="move_failed">Failed to move file.</string>
+    <string name="remove_from_playlist">Remove from Playlist</string>
+    <string name="play_playlist">Play Playlist</string>
+    <string name="delete_playlist">Delete Playlist</string>
+    <string name="play_all">Play All</string>
+    <string name="open_playlist">Open Playlist</string>
+    <string name="remove_from_playlist_confirm">Remove this song from the playlist?</string>
+    <string name="delete_playlist_confirm">Delete this playlist and all its songs?</string>
+    <string name="remove_success">Song removed from playlist.</string>
+    <string name="remove_failed">Failed to remove song.</string>
+    <string name="delete_playlist_success">Playlist deleted.</string>
+    <string name="delete_playlist_failed">Failed to delete playlist.</string>
+    <string name="no_audio_files">No audio files found in this folder.</string>
+    <string name="widget_description">Music player controls for your home screen</string>
+    <string name="widget_label">Music Player</string>
+    <string name="widget_no_track">Tap ▶ to play</string>
 
 </resources>

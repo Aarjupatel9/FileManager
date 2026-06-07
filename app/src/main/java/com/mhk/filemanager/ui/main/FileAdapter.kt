@@ -30,6 +30,11 @@ import com.mhk.filemanager.databinding.ItemFileBinding
 import com.mhk.filemanager.services.MusicPlayerService
 import com.mhk.filemanager.utils.Permissions
 import com.mhk.filemanager.viewmodal.FileManagerViewModel
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import java.io.File
 
 @Suppress("DEPRECATION")
@@ -43,10 +48,6 @@ class FileAdapter(
     private val maxVisibleFileNameLength = 30
 
     init {
-        val permissionManager = Permissions(context, this)
-        if (permissionManager.requestStoragePermissions()) {
-            loadMediaFiles(Environment.getExternalStorageDirectory().absolutePath)
-        }
         viewModel.openedFile.observe(context) {
             // Observer for current file path changes
         }
@@ -57,78 +58,88 @@ class FileAdapter(
         sortOrder = newSortOrder
     }
 
+    fun isCustomOrderActive(): Boolean {
+        val currentPath = viewModel.openedFile.value ?: ""
+        return sortOrder == Constants.SORT_CONSTANTS.SORT_BY_CUSTOM_ORDER && isInsideMusicLibrary(currentPath) && currentPath != getMusicLibraryPath()
+    }
+
+    fun getItemAt(position: Int): FileEntry? {
+        if (position in files.indices) {
+            return files[position]
+        }
+        return null
+    }
+
+    fun moveItem(fromPosition: Int, toPosition: Int) {
+        if (fromPosition < 0 || fromPosition >= files.size || toPosition < 0 || toPosition >= files.size) return
+        if (!isCustomOrderActive()) return
+
+        val mutableList = files.toMutableList()
+        java.util.Collections.swap(mutableList, fromPosition, toPosition)
+        files = mutableList
+        notifyItemMoved(fromPosition, toPosition)
+
+        val currentPath = viewModel.openedFile.value ?: return
+        val songPaths = files.filterNot { it.mimetype == "dir" }.map { it.file.absolutePath }
+        context.lifecycleScope.launch {
+            (context as? MainActivity)?.settingsManager?.setCustomPlaylistOrder(currentPath, songPaths)
+        }
+    }
+
     @SuppressLint("NotifyDataSetChanged")
-    fun loadMediaFiles(directoryPath: String, fileSortOrder: Int = sortOrder) {
+    fun loadMediaFiles(directoryPath: String, fileSortOrder: Int? = null) {
         // Update the library view state in MainActivity
         if (context is MainActivity) {
             context.updateLibraryViewState(directoryPath)
         }
 
-        val fileInfo = getFileInfoFromPath(directoryPath)
-        viewModel.updateOpenedFileTreeData(fileInfo)
-
-        Log.d("MainActivity", "loadFiles start directoryPath : $directoryPath ")
-
-        val externalUri: Uri = MediaStore.Files.getContentUri("external")
-        val projection = arrayOf(
-            MediaStore.Files.FileColumns._ID,
-            MediaStore.Files.FileColumns.DISPLAY_NAME,
-            MediaStore.Files.FileColumns.DATA,
-            MediaStore.Files.FileColumns.MIME_TYPE,
-            MediaStore.Files.FileColumns.PARENT,
-            MediaStore.Files.FileColumns.SIZE,
-            MediaStore.Files.FileColumns.DATE_MODIFIED,
-        )
-
-        val selection = "${MediaStore.Files.FileColumns.DATA} LIKE ? AND ${MediaStore.Files.FileColumns.DATA} NOT LIKE ? AND ${MediaStore.Files.FileColumns.DATA} != ?"
-        val selectionArgs = arrayOf("$directoryPath%", "$directoryPath/%/%", directoryPath)
-
-        val cursor = context.contentResolver.query(externalUri, projection, selection, selectionArgs, null)
-        val fileList = mutableListOf<FileEntry>()
-        cursor?.use {
-            while (it.moveToNext()) {
-                val id = it.getLong(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID))
-                val name = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)) ?: ""
-                val data = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)) ?: ""
-                val mimeType = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE))
-                val parentIdStr = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.PARENT))
-                val size = it.getLong(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE))
-                val dateModified = it.getLong(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED)) * 1000
-
-                if (data.isNotEmpty() && !name.startsWith(".")) {
-                    val parentId = parentIdStr?.toLongOrNull() ?: 0L
-                    fileList.add(
-                        FileEntry(
-                            File(data), id, name, data, mimeType ?: "dir",
-                            parentId, false, size, dateModified
-                        )
-                    )
+        context.lifecycleScope.launch {
+            val resolvedSortOrder = if (fileSortOrder != null) {
+                fileSortOrder
+            } else {
+                val mainActivity = context as? MainActivity
+                if (mainActivity != null) {
+                    mainActivity.settingsManager.getSortOrderForPath(directoryPath).first()
+                } else {
+                    sortOrder
                 }
             }
+
+            // Update the adapter's cached sort order
+            sortOrder = resolvedSortOrder
+
+            val fileInfo = getFileInfoFromPath(directoryPath)
+            viewModel.updateOpenedFileTreeData(fileInfo)
+
+            Log.d("MainActivity", "loadFiles start directoryPath : $directoryPath with order : $resolvedSortOrder")
+
+            val fileList = getPreloadedFiles(directoryPath) ?: withContext(Dispatchers.IO) {
+                queryFilesSync(context, directoryPath)
+            }
+
+            val directories = fileList.filter { it.mimetype == "dir" }
+            val otherFiles = fileList.filterNot { it.mimetype == "dir" }
+
+            val sortedDirectories = when (resolvedSortOrder) {
+                Constants.SORT_CONSTANTS.SORT_BY_NAME_DESC,
+                Constants.SORT_CONSTANTS.SORT_BY_SIZE_DESC,
+                Constants.SORT_CONSTANTS.SORT_BY_DATE_DESC -> directories.sortedByDescending { it.name.lowercase() }
+                else -> directories.sortedBy { it.name.lowercase() }
+            }
+
+            val sortedOtherFiles = when (resolvedSortOrder) {
+                Constants.SORT_CONSTANTS.SORT_BY_NAME_ASC -> otherFiles.sortedBy { it.name.lowercase() }
+                Constants.SORT_CONSTANTS.SORT_BY_NAME_DESC -> otherFiles.sortedByDescending { it.name.lowercase() }
+                Constants.SORT_CONSTANTS.SORT_BY_SIZE_ASC -> otherFiles.sortedBy { it.size }
+                Constants.SORT_CONSTANTS.SORT_BY_SIZE_DESC -> otherFiles.sortedByDescending { it.size }
+                Constants.SORT_CONSTANTS.SORT_BY_DATE_ASC -> otherFiles.sortedBy { it.dateModified }
+                Constants.SORT_CONSTANTS.SORT_BY_DATE_DESC -> otherFiles.sortedByDescending { it.dateModified }
+                else -> otherFiles.sortedBy { it.name.lowercase() }
+            }
+
+            files = sortedDirectories + sortedOtherFiles
+            notifyDataSetChanged()
         }
-
-        val directories = fileList.filter { it.mimetype == "dir" }
-        val otherFiles = fileList.filterNot { it.mimetype == "dir" }
-
-        val sortedDirectories = when (fileSortOrder) {
-            Constants.SORT_CONSTANTS.SORT_BY_NAME_DESC,
-            Constants.SORT_CONSTANTS.SORT_BY_SIZE_DESC,
-            Constants.SORT_CONSTANTS.SORT_BY_DATE_DESC -> directories.sortedByDescending { it.name.lowercase() }
-            else -> directories.sortedBy { it.name.lowercase() }
-        }
-
-        val sortedOtherFiles = when (fileSortOrder) {
-            Constants.SORT_CONSTANTS.SORT_BY_NAME_ASC -> otherFiles.sortedBy { it.name.lowercase() }
-            Constants.SORT_CONSTANTS.SORT_BY_NAME_DESC -> otherFiles.sortedByDescending { it.name.lowercase() }
-            Constants.SORT_CONSTANTS.SORT_BY_SIZE_ASC -> otherFiles.sortedBy { it.size }
-            Constants.SORT_CONSTANTS.SORT_BY_SIZE_DESC -> otherFiles.sortedByDescending { it.size }
-            Constants.SORT_CONSTANTS.SORT_BY_DATE_ASC -> otherFiles.sortedBy { it.dateModified }
-            Constants.SORT_CONSTANTS.SORT_BY_DATE_DESC -> otherFiles.sortedByDescending { it.dateModified }
-            else -> otherFiles.sortedBy { it.name.lowercase() }
-        }
-
-        files = sortedDirectories + sortedOtherFiles
-        notifyDataSetChanged()
     }
 
     private fun getFileInfoFromPath(filePath: String): List<String> {
@@ -152,7 +163,10 @@ class FileAdapter(
         cursor?.use {
             if (it.moveToFirst()) {
                 val path = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)) ?: ""
-                val name = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)) ?: ""
+                var name = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)) ?: ""
+                if (name.isEmpty() && path.isNotEmpty()) {
+                    name = File(path).name
+                }
                 if (path.isNotEmpty()) {
                     fileData.add(path)
                     fileData.add(name)
@@ -173,14 +187,24 @@ class FileAdapter(
         fun bind(fileEntry: FileEntry) {
             binding.fileName.text = getSortFileName(fileEntry.name)
             binding.fileIcon.setImageResource(
-                when (fileEntry.mimetype) {
-                    "dir" -> R.drawable.ic_folder
-                    "audio/mpeg", "audio/x-wav", "audio/mp3" -> R.drawable.baseline_music_note_24
-                    "audio/mp4", "video/mp4" -> R.drawable.baseline_video_file_24
-                    "application/pdf" -> R.drawable.baseline_picture_as_pdf_24
+                when {
+                    fileEntry.mimetype == "dir" -> R.drawable.ic_folder
+                    fileEntry.mimetype.startsWith("audio/") -> R.drawable.baseline_music_note_24
+                    fileEntry.mimetype == "audio/mp4" || fileEntry.mimetype == "video/mp4" -> R.drawable.baseline_video_file_24
+                    fileEntry.mimetype == "application/pdf" -> R.drawable.baseline_picture_as_pdf_24
                     else -> R.drawable.ic_file
                 }
             )
+
+            // Bind file metadata details (size and date)
+            if (fileEntry.mimetype == "dir") {
+                binding.fileDetails.text = "Folder"
+            } else {
+                val sizeStr = formatFileSize(fileEntry.size)
+                val dateStr = formatDate(fileEntry.dateModified)
+                binding.fileDetails.text = "$sizeStr • $dateStr"
+            }
+
             binding.itemContainer.setOnClickListener { handleFileClick(fileEntry) }
             binding.menuButton.setOnClickListener { showPopupMenu(it, fileEntry) }
         }
@@ -203,51 +227,173 @@ class FileAdapter(
         loadMediaFiles(file.data as String)
     }
 
+    private fun getMusicLibraryPath(): String {
+        return File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), "FileManagerMusic").absolutePath
+    }
+
+    private fun isInsideMusicLibrary(path: String): Boolean {
+        return path.startsWith(getMusicLibraryPath())
+    }
+
+    private fun isAudioFile(name: String): Boolean {
+        val lower = name.lowercase()
+        return lower.endsWith(".mp3") || lower.endsWith(".wav") || lower.endsWith(".flac") ||
+               lower.endsWith(".ogg") || lower.endsWith(".aac") || lower.endsWith(".m4a") ||
+               lower.endsWith(".opus") || lower.endsWith(".wma") || lower.endsWith(".aiff")
+    }
+
+    fun playFolderAsPlaylist(folder: File) {
+        val path = folder.absolutePath
+        context.lifecycleScope.launch {
+            val mainActivity = context as? MainActivity
+            val sortType = mainActivity?.settingsManager?.getSortOrderForPath(path)?.first() ?: Constants.SORT_CONSTANTS.SORT_BY_NAME_ASC
+            val customOrder = if (sortType == Constants.SORT_CONSTANTS.SORT_BY_CUSTOM_ORDER) {
+                mainActivity?.settingsManager?.getCustomPlaylistOrder(path)?.first() ?: emptyList()
+            } else {
+                emptyList()
+            }
+
+            val filesList = folder.listFiles { f -> !f.isDirectory && isAudioFile(f.name) } ?: emptyArray()
+
+            val sortedFiles = when (sortType) {
+                Constants.SORT_CONSTANTS.SORT_BY_NAME_ASC -> filesList.sortedBy { it.name.lowercase() }
+                Constants.SORT_CONSTANTS.SORT_BY_NAME_DESC -> filesList.sortedByDescending { it.name.lowercase() }
+                Constants.SORT_CONSTANTS.SORT_BY_SIZE_ASC -> filesList.sortedBy { it.length() }
+                Constants.SORT_CONSTANTS.SORT_BY_SIZE_DESC -> filesList.sortedByDescending { it.length() }
+                Constants.SORT_CONSTANTS.SORT_BY_DATE_ASC -> filesList.sortedBy { it.lastModified() }
+                Constants.SORT_CONSTANTS.SORT_BY_DATE_DESC -> filesList.sortedByDescending { it.lastModified() }
+                Constants.SORT_CONSTANTS.SORT_BY_CUSTOM_ORDER -> {
+                    filesList.sortedBy { file ->
+                        val index = customOrder.indexOf(file.absolutePath)
+                        if (index == -1) Int.MAX_VALUE else index
+                    }
+                }
+                else -> filesList.sortedBy { it.name.lowercase() }
+            }
+
+            val audioFiles = sortedFiles.map { it.absolutePath }.toCollection(ArrayList())
+
+            if (audioFiles.isEmpty()) {
+                Toast.makeText(context, R.string.no_audio_files, Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            val serviceIntent = Intent(context, MusicPlayerService::class.java).apply {
+                putExtra("filePath", audioFiles[0])
+                putStringArrayListExtra("playlist", audioFiles)
+            }
+            ContextCompat.startForegroundService(context, serviceIntent)
+        }
+    }
+
     private fun showPopupMenu(view: View, fileEntry: FileEntry) {
         val popup = PopupMenu(context, view)
         popup.menuInflater.inflate(R.menu.file_item_menu, popup.menu)
 
-        val moveItem = popup.menu.findItem(R.id.action_move)
+        val isAudio = fileEntry.mimetype.startsWith("audio/")
+        val isDir = fileEntry.mimetype == "dir"
+        val insideLibrary = isInsideMusicLibrary(fileEntry.file.absolutePath)
+        val isPlaylistFolder = isDir && insideLibrary && fileEntry.file.absolutePath != getMusicLibraryPath()
 
-        // Check if the file is already in the music library
-        val musicLibraryPath = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), "FileManagerMusic").absolutePath
-        val fileParentPath = fileEntry.file.parentFile?.absolutePath ?: ""
-
-        // Show "Move" only for audio files that are NOT already in the library
-        moveItem.isVisible = fileEntry.mimetype.startsWith("audio/") && !fileParentPath.startsWith(musicLibraryPath)
+        // Visibility rules
+        popup.menu.findItem(R.id.action_rename).isVisible = true
+        // "Move to Playlist" — all audio files (inside or outside library)
+        popup.menu.findItem(R.id.action_move).isVisible = isAudio
+        // "Remove from Playlist" — audio files inside a playlist folder only
+        popup.menu.findItem(R.id.action_remove_from_playlist).isVisible = isAudio && insideLibrary
+        // "Play Playlist" — playlist folders only
+        popup.menu.findItem(R.id.action_play_playlist).isVisible = isPlaylistFolder
+        // "Delete Playlist" — playlist folders only
+        popup.menu.findItem(R.id.action_delete_playlist).isVisible = isPlaylistFolder
 
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
-                R.id.action_rename -> {
-                    showRenameDialog(fileEntry)
-                    true
-                }
-                R.id.action_move -> {
-                    showMoveToPlaylistDialog(fileEntry)
-                    true
-                }
+                R.id.action_rename -> { showRenameDialog(fileEntry); true }
+                R.id.action_move -> { showMoveToPlaylistDialog(fileEntry); true }
+                R.id.action_remove_from_playlist -> { confirmRemoveFromPlaylist(fileEntry); true }
+                R.id.action_play_playlist -> { playFolderAsPlaylist(fileEntry.file); true }
+                R.id.action_delete_playlist -> { confirmDeletePlaylist(fileEntry); true }
                 else -> false
             }
         }
         popup.show()
     }
 
+    private fun confirmRemoveFromPlaylist(fileEntry: FileEntry) {
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
+            .setTitle(fileEntry.name)
+            .setMessage(R.string.remove_from_playlist_confirm)
+            .setPositiveButton(R.string.remove_from_playlist) { _, _ ->
+                if (fileEntry.file.delete()) {
+                    context.contentResolver.delete(
+                        MediaStore.Files.getContentUri("external"),
+                        "${MediaStore.Files.FileColumns.DATA}=?",
+                        arrayOf(fileEntry.file.absolutePath)
+                    )
+                    Toast.makeText(context, R.string.remove_success, Toast.LENGTH_SHORT).show()
+                    viewModel.openedFile.value?.let { loadMediaFiles(it) }
+                } else {
+                    Toast.makeText(context, R.string.remove_failed, Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun confirmDeletePlaylist(fileEntry: FileEntry) {
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
+            .setTitle(fileEntry.name)
+            .setMessage(R.string.delete_playlist_confirm)
+            .setPositiveButton(R.string.delete_playlist) { _, _ ->
+                if (deleteRecursively(fileEntry.file)) {
+                    Toast.makeText(context, R.string.delete_playlist_success, Toast.LENGTH_SHORT).show()
+                    viewModel.openedFile.value?.let { loadMediaFiles(it) }
+                } else {
+                    Toast.makeText(context, R.string.delete_playlist_failed, Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun deleteRecursively(file: File): Boolean {
+        if (file.isDirectory) {
+            file.listFiles()?.forEach { child ->
+                // Remove each child from MediaStore
+                context.contentResolver.delete(
+                    MediaStore.Files.getContentUri("external"),
+                    "${MediaStore.Files.FileColumns.DATA}=?",
+                    arrayOf(child.absolutePath)
+                )
+                deleteRecursively(child)
+            }
+        }
+        return file.delete()
+    }
+
     private fun showMoveToPlaylistDialog(fileEntry: FileEntry) {
         val musicLibraryDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), "FileManagerMusic")
-        val playlists = musicLibraryDir.listFiles { file -> file.isDirectory }?.map { it.name }?.toMutableList() ?: mutableListOf()
+        val currentParentPath = fileEntry.file.parentFile?.absolutePath ?: ""
+
+        // Exclude the current parent folder so you can't "move" to the same playlist
+        val playlists = musicLibraryDir.listFiles { file ->
+            file.isDirectory && file.absolutePath != currentParentPath
+        }?.map { it.name }?.toMutableList() ?: mutableListOf()
 
         playlists.add(0, context.getString(R.string.create_new_playlist))
 
         val adapter = ArrayAdapter(context, android.R.layout.simple_list_item_1, playlists)
 
-        AlertDialog.Builder(context)
-            .setTitle(R.string.move_to_playlist)
+        val title = if (isInsideMusicLibrary(fileEntry.file.absolutePath))
+            context.getString(R.string.move_to_another_playlist)
+        else
+            context.getString(R.string.move_to_playlist)
+
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
+            .setTitle(title)
             .setAdapter(adapter) { _, which ->
                 if (which == 0) {
-                    // Create New Playlist
                     showCreatePlaylistDialog(fileEntry)
                 } else {
-                    // Move to existing playlist
                     val playlistName = playlists[which]
                     val destinationDir = File(musicLibraryDir, playlistName)
                     moveFile(fileEntry, destinationDir)
@@ -260,7 +406,7 @@ class FileAdapter(
         val dialogView = LayoutInflater.from(context).inflate(R.layout.create_folder_dialog, null)
         val folderNameEditText = dialogView.findViewById<EditText>(R.id.folderNameEditText)
 
-        AlertDialog.Builder(context)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
             .setTitle(R.string.create_new_playlist)
             .setView(dialogView)
             .setPositiveButton(R.string.create) { _, _ ->
@@ -305,7 +451,7 @@ class FileAdapter(
         val dialogView = LayoutInflater.from(context).inflate(R.layout.rename_dialog, null)
         val newNameEditText = dialogView.findViewById<EditText>(R.id.newNameEditText)
         newNameEditText.setText(fileEntry.name)
-        val dialog = AlertDialog.Builder(context)
+        val dialog = com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
             .setTitle(R.string.rename_file)
             .setView(dialogView)
             .setPositiveButton(R.string.save, null)
@@ -408,5 +554,92 @@ class FileAdapter(
             return name.slice(0..maxVisibleFileNameLength) + "..."
         }
         return name
+    }
+
+    private fun formatFileSize(size: Long): String {
+        if (size <= 0) return "0 B"
+        val units = arrayOf("B", "KB", "MB", "GB", "TB")
+        val digitGroups = (Math.log10(size.toDouble()) / Math.log10(1024.0)).toInt()
+        val index = if (digitGroups in units.indices) digitGroups else units.size - 1
+        return String.format(java.util.Locale.US, "%.1f %s", size / Math.pow(1024.0, index.toDouble()), units[index])
+    }
+
+    private fun formatDate(timeMs: Long): String {
+        val df = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault())
+        return df.format(java.util.Date(timeMs))
+    }
+
+    companion object {
+        private var preloadedPath: String? = null
+        private var preloadedFiles: List<FileEntry>? = null
+
+        fun preloadFiles(context: android.content.Context, scope: kotlinx.coroutines.CoroutineScope, path: String) {
+            preloadedPath = path
+            scope.launch(Dispatchers.IO) {
+                try {
+                    val list = queryFilesSync(context, path)
+                    preloadedFiles = list
+                    Log.d("FileAdapter", "Preloaded ${list.size} files for path: $path")
+                } catch (e: Exception) {
+                    Log.e("FileAdapter", "Preload error", e)
+                }
+            }
+        }
+
+        fun getPreloadedFiles(path: String): List<FileEntry>? {
+            return if (path == preloadedPath) {
+                val files = preloadedFiles
+                preloadedPath = null
+                preloadedFiles = null
+                Log.d("FileAdapter", "Consumed preloaded files cache for path: $path")
+                files
+            } else {
+                null
+            }
+        }
+
+        fun queryFilesSync(context: android.content.Context, directoryPath: String): List<FileEntry> {
+            val externalUri: Uri = MediaStore.Files.getContentUri("external")
+            val projection = arrayOf(
+                MediaStore.Files.FileColumns._ID,
+                MediaStore.Files.FileColumns.DISPLAY_NAME,
+                MediaStore.Files.FileColumns.DATA,
+                MediaStore.Files.FileColumns.MIME_TYPE,
+                MediaStore.Files.FileColumns.PARENT,
+                MediaStore.Files.FileColumns.SIZE,
+                MediaStore.Files.FileColumns.DATE_MODIFIED,
+            )
+
+            val selection = "${MediaStore.Files.FileColumns.DATA} LIKE ? AND ${MediaStore.Files.FileColumns.DATA} NOT LIKE ? AND ${MediaStore.Files.FileColumns.DATA} != ?"
+            val selectionArgs = arrayOf("$directoryPath%", "$directoryPath/%/%", directoryPath)
+
+            val cursor = context.contentResolver.query(externalUri, projection, selection, selectionArgs, null)
+            val list = mutableListOf<FileEntry>()
+            cursor?.use {
+                while (it.moveToNext()) {
+                    val id = it.getLong(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID))
+                    val data = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)) ?: ""
+                    var name = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)) ?: ""
+                    if (name.isEmpty() && data.isNotEmpty()) {
+                        name = File(data).name
+                    }
+                    val mimeType = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE))
+                    val parentIdStr = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.PARENT))
+                    val size = it.getLong(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE))
+                    val dateModified = it.getLong(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED)) * 1000
+
+                    if (data.isNotEmpty() && !name.startsWith(".")) {
+                        val parentId = parentIdStr?.toLongOrNull() ?: 0L
+                        list.add(
+                            FileEntry(
+                                File(data), id, name, data, mimeType ?: "dir",
+                                parentId, false, size, dateModified
+                            )
+                        )
+                    }
+                }
+            }
+            return list
+        }
     }
 }

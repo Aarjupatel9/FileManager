@@ -6,12 +6,14 @@
     android:layout_width="match_parent"
     android:layout_height="156dp"
     android:layout_marginHorizontal="8dp"
+    android:layout_marginBottom="8dp"
     android:clickable="true"
     android:focusable="true"
-    android:background="?attr/colorSurfaceContainerHigh"
     app:cardCornerRadius="16dp"
-    app:cardElevation="8dp"
-    app:strokeWidth="0dp">
+    app:cardElevation="4dp"
+    app:strokeWidth="1dp"
+    app:strokeColor="?attr/colorOutlineVariant"
+    app:cardBackgroundColor="?attr/colorSurfaceContainerHigh">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
@@ -25,7 +27,8 @@
             android:src="@drawable/baseline_music_note_24"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:tint="?attr/colorPrimary" />
+            app:tint="?attr/colorPrimary"
+            android:contentDescription="Album Art" />
 
         <TextView
             android:id="@+id/cardTrackName"
@@ -40,6 +43,7 @@
             android:singleLine="true"
             android:textAppearance="?attr/textAppearanceLabelLarge"
             android:textColor="?attr/colorOnSurface"
+            android:textStyle="bold"
             app:layout_constraintEnd_toStartOf="@+id/cardExpandButton"
             app:layout_constraintStart_toEndOf="@id/cardAlbumArt"
             app:layout_constraintTop_toTopOf="parent"
@@ -53,7 +57,8 @@
             android:src="@drawable/ic_fullscreen_24"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:tint="?attr/colorOnSurfaceVariant" />
+            app:tint="?attr/colorOnSurfaceVariant"
+            android:contentDescription="Expand Player" />
 
         <SeekBar
             android:id="@+id/cardProgressBar"
@@ -112,7 +117,8 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/baseline_loop_24"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/cardCurrentTime" />
+            app:layout_constraintTop_toBottomOf="@id/cardCurrentTime"
+            android:contentDescription="Repeat Toggle" />
 
         <LinearLayout
             android:layout_width="wrap_content"
@@ -127,25 +133,28 @@
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@android:drawable/ic_media_previous"
-                app:tint="?attr/colorOnSurface" />
+                android:src="@drawable/ic_skip_previous_24"
+                app:tint="?attr/colorOnSurface"
+                android:contentDescription="Previous Track" />
 
             <ImageButton
                 android:id="@+id/cardPlayPauseButton"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:layout_marginHorizontal="8dp"
+                android:layout_marginHorizontal="16dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@drawable/baseline_play_circle_outline_24"
-                app:tint="?attr/colorOnSurface" />
+                android:src="@drawable/ic_play_arrow_24"
+                app:tint="?attr/colorPrimary"
+                android:contentDescription="Play or Pause" />
 
             <ImageButton
                 android:id="@+id/cardNextButton"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@android:drawable/ic_media_next"
-                app:tint="?attr/colorOnSurface" />
+                android:src="@drawable/ic_skip_next_24"
+                app:tint="?attr/colorOnSurface"
+                android:contentDescription="Next Track" />
         </LinearLayout>
 
         <ImageButton
@@ -156,7 +165,8 @@
             android:src="@android:drawable/ic_menu_close_clear_cancel"
             app:layout_constraintTop_toTopOf="@id/cardRepeatButton"
             app:layout_constraintEnd_toEndOf="parent"
-            app:tint="?attr/colorError" />
+            app:tint="?attr/colorError"
+            android:contentDescription="Stop Player" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </com.google.android.material.card.MaterialCardView>

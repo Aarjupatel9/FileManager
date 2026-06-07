@@ -39,6 +39,7 @@ import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.mhk.filemanager.utils.Permissions
 
 class JapCounterActivity : AppCompatActivity() {
 
@@ -69,6 +70,9 @@ class JapCounterActivity : AppCompatActivity() {
         isVibrateOn = sharedPrefs.getBoolean("vibrate", true)
         updateVibrateIcon()
 
+        // Request exact alarm permission for reminders (Android 12+)
+        Permissions(this, null).requestExactAlarmPermission()
+
         loadData()
 
         binding.backButton.setOnClickListener { finish() }
@@ -91,8 +95,29 @@ class JapCounterActivity : AppCompatActivity() {
 
         binding.tapArea.setOnClickListener {
             if (isVibrateOn) {
-                it.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+                // Use a more premium, clicky haptic feedback constant
+                val hapticType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                    HapticFeedbackConstants.KEYBOARD_RELEASE
+                } else {
+                    HapticFeedbackConstants.KEYBOARD_TAP
+                }
+                it.performHapticFeedback(hapticType)
             }
+            
+            // Premium micro-animation bounce effect on the circular card
+            binding.counterCard.animate()
+                .scaleX(0.92f)
+                .scaleY(0.92f)
+                .setDuration(60)
+                .withEndAction {
+                    binding.counterCard.animate()
+                        .scaleX(1.0f)
+                        .scaleY(1.0f)
+                        .setDuration(120)
+                        .start()
+                }
+                .start()
+
             incrementCount()
         }
 
@@ -115,7 +140,7 @@ class JapCounterActivity : AppCompatActivity() {
 
     private fun showCloudConnectPrompt() {
         sharedPrefs.edit().putLong("last_cloud_prompt_timestamp", System.currentTimeMillis()).apply()
-        AlertDialog.Builder(this)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle("Cloud Sync Available")
             .setMessage("Protect your data! Connect to https://codeshare.auctionng.org to securely backup your counts and sync across devices.")
             .setPositiveButton("Login/Sync Now") { _, _ ->
@@ -287,7 +312,7 @@ class JapCounterActivity : AppCompatActivity() {
     }
 
     private fun showAddCategoryDialog() {
-        val builder = AlertDialog.Builder(this)
+        val builder = com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
         builder.setTitle("Add New Category")
         val input = EditText(this)
         builder.setView(input)
@@ -308,7 +333,7 @@ class JapCounterActivity : AppCompatActivity() {
     
     private fun showSettingsDialog() {
         if (currentCategory.isEmpty()) return
-        val builder = AlertDialog.Builder(this)
+        val builder = com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
         val view = layoutInflater.inflate(R.layout.dialog_jap_settings, null)
         builder.setView(view)
         

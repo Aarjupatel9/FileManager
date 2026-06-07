@@ -40,6 +40,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.mhk.filemanager.R
@@ -52,6 +53,7 @@ import com.mhk.filemanager.services.MusicPlayerService
 import com.mhk.filemanager.ui.player.MusicPlayerActivity
 import com.mhk.filemanager.utils.Permissions
 import com.mhk.filemanager.viewmodal.FileManagerViewModel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -64,7 +66,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var fileTreeLayout: LinearLayout
     private lateinit var fileAdapter: FileAdapter
     private lateinit var binding: ActivityMainBinding
-    private lateinit var settingsManager: SettingsManager
+    lateinit var settingsManager: SettingsManager
     private lateinit var permissionManager: Permissions
     private var myBroadcastReceiver: MyBroadcastReceiver? = null
     
@@ -125,8 +127,8 @@ class MainActivity : AppCompatActivity() {
         // Pass the initial sort order to the adapter
         fileAdapter = FileAdapter(this, viewModel, currentSortOrder)
         recyclerView.adapter = fileAdapter
-
-        observeSortOrder() // Start observing changes to the sort order
+        permissionManager.fileAdapter = fileAdapter
+        setupItemTouchHelper()
 
         // Handle back navigation to parent folder
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
@@ -135,7 +137,6 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        checkManageExternalStoragePermission()
         initialNotificationSetup()
         // startApplicationServices() // Temporarily commented out as requested
         checkNotificationPermission()
@@ -160,8 +161,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        binding.createFolderButton.setOnClickListener {
-            showCreateFolderDialog()
+        binding.addFab.setOnClickListener { view ->
+            showAddMenu(view)
         }
 
         binding.japCounterButton.setOnClickListener {
@@ -174,6 +175,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         setupMusicCard()
+        checkAndPromptDefaultMusicPlayer()
     }
 
     private fun setupMusicCard() {
@@ -223,6 +225,12 @@ class MainActivity : AppCompatActivity() {
             startActivity(intent)
         }
         
+        // Play All button
+        binding.playAllButton.setOnClickListener {
+            val currentPath = viewModel.openedFile.value ?: return@setOnClickListener
+            fileAdapter.playFolderAsPlaylist(java.io.File(currentPath))
+        }
+        
         // Hide card initially unless service is already running and playing
         updateMusicCardVisibility()
     }
@@ -251,9 +259,9 @@ class MainActivity : AppCompatActivity() {
             binding.musicCard.cardTrackName.isSelected = true 
             
             if (isPlaying) {
-                binding.musicCard.cardPlayPauseButton.setImageResource(R.drawable.baseline_pause_circle_outline_24)
+                binding.musicCard.cardPlayPauseButton.setImageResource(R.drawable.ic_pause_24)
             } else {
-                binding.musicCard.cardPlayPauseButton.setImageResource(R.drawable.baseline_play_circle_outline_24)
+                binding.musicCard.cardPlayPauseButton.setImageResource(R.drawable.ic_play_arrow_24)
             }
 
             if (isRepeatEnabled) {
@@ -280,6 +288,16 @@ class MainActivity : AppCompatActivity() {
         val minutes = java.util.concurrent.TimeUnit.MILLISECONDS.toMinutes(durationMs.toLong())
         val seconds = java.util.concurrent.TimeUnit.MILLISECONDS.toSeconds(durationMs.toLong()) - java.util.concurrent.TimeUnit.MINUTES.toSeconds(minutes)
         return String.format("%02d:%02d", minutes, seconds)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (permissionManager.requestStoragePermissions()) {
+            val currentPath = viewModel.openedFile.value ?: Environment.getExternalStorageDirectory().absolutePath
+            if (::fileAdapter.isInitialized) {
+                fileAdapter.loadMediaFiles(currentPath)
+            }
+        }
     }
 
     override fun onStart() {
@@ -326,13 +344,36 @@ class MainActivity : AppCompatActivity() {
             isLibraryViewActive = false
             binding.libraryButton.setImageResource(R.drawable.ic_library_music_24)
         }
+        updatePlayAllButtonVisibility(path)
+    }
+
+    private fun updatePlayAllButtonVisibility(path: String) {
+        val musicLibraryPath = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), "FileManagerMusic").absolutePath
+        // Show "Play All" only inside a playlist sub-folder (not the root library folder itself)
+        val isInsidePlaylistFolder = path.startsWith(musicLibraryPath) && path != musicLibraryPath
+        binding.playAllButton.visibility = if (isInsidePlaylistFolder) android.view.View.VISIBLE else android.view.View.GONE
+    }
+
+    private fun showAddMenu(anchor: android.view.View) {
+        val popup = androidx.appcompat.widget.PopupMenu(this, anchor)
+        popup.menu.add(0, 1, 0, "New Folder")
+        popup.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                1 -> {
+                    showCreateFolderDialog()
+                    true
+                }
+                else -> false
+            }
+        }
+        popup.show()
     }
 
     private fun showCreateFolderDialog() {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.create_folder_dialog, null)
         val folderNameEditText = dialogView.findViewById<EditText>(R.id.folderNameEditText)
 
-        val dialog = AlertDialog.Builder(this)
+        val dialog = com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(R.string.create_folder)
             .setView(dialogView)
             .setPositiveButton(R.string.create) { _, _ ->
@@ -374,22 +415,47 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // Observe the sort order Flow from DataStore
-    private fun observeSortOrder() {
-        lifecycleScope.launch {
-            settingsManager.sortOrderFlow.collect { sortOrder ->
-                currentSortOrder = sortOrder
-                // Pass the updated sort order to the adapter
-                fileAdapter.setSortOrder(sortOrder)
-                // Refresh the file list with the new sort order
-                viewModel.openedFile.value?.let { path ->
-                    fileAdapter.loadMediaFiles(path, sortOrder)
+    private fun setupItemTouchHelper() {
+        val itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
+            ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0
+        ) {
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ): Boolean {
+                val fromPosition = viewHolder.adapterPosition
+                val toPosition = target.adapterPosition
+
+                val itemFrom = fileAdapter.getItemAt(fromPosition)
+                val itemTo = fileAdapter.getItemAt(toPosition)
+                if (itemFrom?.mimetype == "dir" || itemTo?.mimetype == "dir") {
+                    return false
                 }
+
+                fileAdapter.moveItem(fromPosition, toPosition)
+                return true
             }
-        }
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {}
+
+            override fun isLongPressDragEnabled(): Boolean {
+                return fileAdapter.isCustomOrderActive()
+            }
+        })
+        itemTouchHelper.attachToRecyclerView(recyclerView)
     }
 
     private fun showSortDialog() {
+        val currentPath = viewModel.openedFile.value ?: Environment.getExternalStorageDirectory().absolutePath
+        lifecycleScope.launch {
+            val pathSortOrder = settingsManager.getSortOrderForPath(currentPath).first()
+            currentSortOrder = pathSortOrder
+            showSortDialogWithOrder(currentPath, pathSortOrder)
+        }
+    }
+
+    private fun showSortDialogWithOrder(currentPath: String, activeOrder: Int) {
         val dialogView = layoutInflater.inflate(R.layout.sort_dialog, null)
         val dialog = Dialog(this)
         dialog.setContentView(dialogView)
@@ -403,8 +469,19 @@ class MainActivity : AppCompatActivity() {
         val sizeDesc = dialogView.findViewById<ImageButton>(R.id.sortBySizeDesc)
         val dateAsc = dialogView.findViewById<ImageButton>(R.id.sortByDateAsc)
         val dateDesc = dialogView.findViewById<ImageButton>(R.id.sortByDateDesc)
+        val customOrderLayout = dialogView.findViewById<LinearLayout>(R.id.sortByCustomOrderLayout)
+        val customOrder = dialogView.findViewById<ImageButton>(R.id.sortByCustomOrder)
 
-        val buttons = mapOf(
+        val musicLibraryPath = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), "FileManagerMusic").absolutePath
+        val isInsidePlaylist = currentPath.startsWith(musicLibraryPath) && currentPath != musicLibraryPath
+
+        if (isInsidePlaylist) {
+            customOrderLayout.visibility = android.view.View.VISIBLE
+        } else {
+            customOrderLayout.visibility = android.view.View.GONE
+        }
+
+        val buttons = mutableMapOf(
             Constants.SORT_CONSTANTS.SORT_BY_NAME_ASC to nameAsc,
             Constants.SORT_CONSTANTS.SORT_BY_NAME_DESC to nameDesc,
             Constants.SORT_CONSTANTS.SORT_BY_SIZE_ASC to sizeAsc,
@@ -412,15 +489,60 @@ class MainActivity : AppCompatActivity() {
             Constants.SORT_CONSTANTS.SORT_BY_DATE_ASC to dateAsc,
             Constants.SORT_CONSTANTS.SORT_BY_DATE_DESC to dateDesc
         )
+        if (isInsidePlaylist) {
+            buttons[Constants.SORT_CONSTANTS.SORT_BY_CUSTOM_ORDER] = customOrder
+        }
 
-        val activeColor = getColorFromTheme(this, com.google.android.material.R.attr.colorPrimary)
-        buttons[currentSortOrder]?.imageTintList = ColorStateList.valueOf(activeColor)
+        val textPrimary = getColorFromTheme(this, com.google.android.material.R.attr.colorPrimary)
+        val textNormal = getColorFromTheme(this, com.google.android.material.R.attr.colorOnSurface)
+
+        val nameText = dialogView.findViewById<android.widget.TextView>(R.id.sortByNameText)
+        val sizeText = dialogView.findViewById<android.widget.TextView>(R.id.sortBySizeText)
+        val dateText = dialogView.findViewById<android.widget.TextView>(R.id.sortByDateText)
+        val customText = dialogView.findViewById<android.widget.TextView>(R.id.sortByCustomOrderText)
+
+        nameText.setTextColor(textNormal)
+        sizeText.setTextColor(textNormal)
+        dateText.setTextColor(textNormal)
+        customText.setTextColor(textNormal)
+
+        when (activeOrder) {
+            Constants.SORT_CONSTANTS.SORT_BY_NAME_ASC, Constants.SORT_CONSTANTS.SORT_BY_NAME_DESC -> {
+                nameText.setTextColor(textPrimary)
+            }
+            Constants.SORT_CONSTANTS.SORT_BY_SIZE_ASC, Constants.SORT_CONSTANTS.SORT_BY_SIZE_DESC -> {
+                sizeText.setTextColor(textPrimary)
+            }
+            Constants.SORT_CONSTANTS.SORT_BY_DATE_ASC, Constants.SORT_CONSTANTS.SORT_BY_DATE_DESC -> {
+                dateText.setTextColor(textPrimary)
+            }
+            Constants.SORT_CONSTANTS.SORT_BY_CUSTOM_ORDER -> {
+                customText.setTextColor(textPrimary)
+            }
+        }
+
+        val activeColor = getColorFromTheme(this, com.google.android.material.R.attr.colorOnPrimaryContainer)
+        val activeBgColor = getColorFromTheme(this, com.google.android.material.R.attr.colorPrimaryContainer)
+        val inactiveColor = getColorFromTheme(this, com.google.android.material.R.attr.colorOnSurfaceVariant)
 
         buttons.forEach { (sortType, button) ->
+            if (sortType == activeOrder) {
+                button.imageTintList = ColorStateList.valueOf(activeColor)
+                button.backgroundTintList = ColorStateList.valueOf(activeBgColor)
+                button.setBackgroundResource(R.drawable.breadcrumb_chip_background)
+            } else {
+                button.imageTintList = ColorStateList.valueOf(inactiveColor)
+                button.backgroundTintList = null
+                val outValue = TypedValue()
+                theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, outValue, true)
+                button.setBackgroundResource(outValue.resourceId)
+            }
+
             button.setOnClickListener {
-                // Save the new sort order to DataStore
                 lifecycleScope.launch {
-                    settingsManager.setSortOrder(sortType)
+                    settingsManager.setSortOrderForPath(currentPath, sortType)
+                    currentSortOrder = sortType
+                    fileAdapter.loadMediaFiles(currentPath, sortType)
                 }
                 dialog.dismiss()
             }
@@ -443,15 +565,26 @@ class MainActivity : AppCompatActivity() {
         for (i in openedFileTree.indices) {
             val textView = TextView(linearLayout.context)
             textView.text = openedFileTree[i][1]
-            textView.setPadding(16, 8, 16, 8)
-            textView.textSize = 16f
-            val colorPrimary = getColorFromTheme(linearLayout.context, com.google.android.material.R.attr.colorPrimary)
-            textView.setTextColor(colorPrimary)
+            textView.setPadding(32, 16, 32, 16)
+            textView.textSize = 14f
+            
+            // Highlight the active directory differently from parent directories
+            val isLast = i == openedFileTree.size - 1
+            textView.setBackgroundResource(R.drawable.breadcrumb_chip_background)
+            if (isLast) {
+                textView.backgroundTintList = ColorStateList.valueOf(getColorFromTheme(linearLayout.context, com.google.android.material.R.attr.colorPrimaryContainer))
+                textView.setTextColor(getColorFromTheme(linearLayout.context, com.google.android.material.R.attr.colorOnPrimaryContainer))
+                textView.setTypeface(null, android.graphics.Typeface.BOLD)
+            } else {
+                textView.backgroundTintList = ColorStateList.valueOf(getColorFromTheme(linearLayout.context, com.google.android.material.R.attr.colorSurfaceVariant))
+                textView.setTextColor(getColorFromTheme(linearLayout.context, com.google.android.material.R.attr.colorOnSurfaceVariant))
+            }
+
             val layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                setMargins(2, 0, 2, 0)
+                setMargins(4, 0, 4, 0)
             }
             textView.layoutParams = layoutParams
             textView.setOnClickListener {
@@ -466,10 +599,10 @@ class MainActivity : AppCompatActivity() {
                 val arrowColor = typedValue.data
                 imageView.setColorFilter(arrowColor)
                 val imageParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
+                    12, // smaller arrow size for cleaner look
+                    12
                 ).apply {
-                    setMargins(8, 0, 8, 0)
+                    setMargins(4, 0, 4, 0)
                 }
                 imageView.layoutParams = imageParams
                 linearLayout.addView(imageView)
@@ -481,15 +614,6 @@ class MainActivity : AppCompatActivity() {
         val typedValue = TypedValue()
         context.theme.resolveAttribute(attributeId, typedValue, true)
         return typedValue.data
-    }
-
-    private fun checkManageExternalStoragePermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            if (!Environment.isExternalStorageManager()) {
-                val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-                startActivity(intent)
-            }
-        }
     }
 
     private fun initialNotificationSetup() {
@@ -584,6 +708,39 @@ class MainActivity : AppCompatActivity() {
         } else {
             // No parent folder, close the app
             finish()
+        }
+    }
+
+    private fun isDefaultMusicPlayer(): Boolean {
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(Uri.parse("file:///dummy.mp3"), "audio/*")
+        }
+        val resolveInfo = packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+        val defaultPackage = resolveInfo?.activityInfo?.packageName
+        return defaultPackage == packageName
+    }
+
+    private fun checkAndPromptDefaultMusicPlayer() {
+        if (!isDefaultMusicPlayer()) {
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle("Set Default Music Player")
+                .setMessage("To enjoy a seamless music playback experience, set File Manager as your default music player.")
+                .setPositiveButton("Set Default") { _, _ ->
+                    try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            startActivity(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))
+                        } else {
+                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.fromParts("package", packageName, null)
+                            }
+                            startActivity(intent)
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(this, "Please set Default Apps in Settings manually", Toast.LENGTH_LONG).show()
+                    }
+                }
+                .setNegativeButton("Later", null)
+                .show()
         }
     }
 
