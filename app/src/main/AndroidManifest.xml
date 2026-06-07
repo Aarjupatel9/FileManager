@@ -47,6 +47,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Exact alarms for JapCounter reminders (Android 12+) -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
@@ -94,6 +95,19 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.APP_MUSIC" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MUSIC_PLAYER" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
 
         <activity
@@ -124,6 +138,16 @@
                 <data android:mimeType="audio/*" />
                 <data android:mimeType="application/ogg" />
                 <data android:mimeType="application/x-flac" />
+            </intent-filter>
+            <!-- Register as a music player app so it appears in system "Default music player" settings -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.APP_MUSIC" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MUSIC_PLAYER" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
 
@@ -158,15 +182,34 @@
             android:name=".services.MusicPlayerService"
             android:enabled="true"
             android:exported="true"
-            android:foregroundServiceType="mediaPlayback" >
+            android:foregroundServiceType="mediaPlayback"
+            android:stopWithTask="false" >
             <intent-filter>
-                <action android:name="android.intent.action.MEDIA_BUTTON" />
+                <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
+            <meta-data
+                android:name="android.media.browse.defaultSearchSupported"
+                android:value="true" />
         </service>
 
         <service
             android:name=".services.MyJobService"
             android:permission="android.permission.BIND_JOB_SERVICE" />
+
+        <receiver
+            android:name=".widget.MusicPlayerWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.mhk.filemanager.WIDGET_PLAY_PAUSE" />
+                <action android:name="com.mhk.filemanager.WIDGET_NEXT" />
+                <action android:name="com.mhk.filemanager.WIDGET_PREVIOUS" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/music_player_widget_info" />
+        </receiver>
 
     </application>
 

@@ -66,5 +66,8 @@
     <string name="delete_playlist_success">Playlist deleted.</string>
     <string name="delete_playlist_failed">Failed to delete playlist.</string>
     <string name="no_audio_files">No audio files found in this folder.</string>
+    <string name="widget_description">Music player controls for your home screen</string>
+    <string name="widget_label">Music Player</string>
+    <string name="widget_no_track">Tap ▶ to play</string>
 
 </resources>

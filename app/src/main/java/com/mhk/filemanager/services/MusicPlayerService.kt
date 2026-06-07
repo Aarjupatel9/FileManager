@@ -4,22 +4,26 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.os.Binder
 import android.os.Build
+import android.os.Bundle
+import android.os.Environment
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.view.View
+import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
+import androidx.media.MediaBrowserServiceCompat
 import androidx.media.app.NotificationCompat.MediaStyle
 import android.widget.RemoteViews
 import android.widget.Toast
@@ -33,8 +37,9 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 import android.content.pm.ServiceInfo
 import android.util.Log
+import com.mhk.filemanager.widget.MusicPlayerWidgetProvider
 
-class MusicPlayerService : Service() {
+class MusicPlayerService : MediaBrowserServiceCompat() {
 
     private var mediaPlayer: MediaPlayer? = null
     private val binder = MusicPlayerBinder()
@@ -51,6 +56,7 @@ class MusicPlayerService : Service() {
     private var playbackStartTime = 0L
     private var isProgressRunnableRunning = false
     private var isPrepared = false
+    private lateinit var prefs: SharedPreferences
 
     // Audio Focus
     private lateinit var audioManager: AudioManager
@@ -88,7 +94,7 @@ class MusicPlayerService : Service() {
 
 
     companion object {
-        const val CHANNEL_ID = "MusicPlayerServiceChannel_v3"
+        const val CHANNEL_ID = "MusicPlayerServiceChannel_v4"
         const val ACTION_PLAY_PAUSE = "com.mhk.filemanager.ACTION_PLAY_PAUSE"
         const val ACTION_STOP = "com.mhk.filemanager.ACTION_STOP"
         const val ACTION_TOGGLE_REPEAT = "com.mhk.filemanager.ACTION_TOGGLE_REPEAT"
@@ -100,36 +106,55 @@ class MusicPlayerService : Service() {
         const val EXTRA_TRACK_NAME = "EXTRA_TRACK_NAME"
         const val EXTRA_DURATION = "EXTRA_DURATION"
         const val EXTRA_POSITION = "EXTRA_POSITION"
+        private const val PREFS_NAME = "music_player_state"
+        private const val PREF_PLAYLIST = "pref_playlist"
+        private const val PREF_TRACK_INDEX = "pref_track_index"
+        private const val PREF_POSITION = "pref_position"
+        private const val PREF_TRACK_PATH = "pref_track_path"
+        private const val MY_MEDIA_ROOT_ID = "filemanager_music_root"
     }
 
     override fun onCreate() {
         super.onCreate()
         notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         createNotificationChannel()
 
         mediaSession = MediaSessionCompat(this, "MusicPlayerService")
         mediaSession.setCallback(mediaSessionCallback)
         mediaSession.isActive = true
+        sessionToken = mediaSession.sessionToken
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d("MusicPlayerService", "onStartCommand action: ${intent?.action}")
+        Log.d("MusicPlayerService", "onStartCommand action: ${intent?.action}, flags: $flags")
+
+        // Handle null intent (START_STICKY restart after system kill)
+        if (intent == null) {
+            Log.d("MusicPlayerService", "Null intent — attempting to restore last playback state")
+            if (!restoreAndPlay()) {
+                Log.d("MusicPlayerService", "Nothing to restore, stopping service")
+                stopSelf()
+            }
+            return START_STICKY
+        }
+
         MediaButtonReceiver.handleIntent(mediaSession, intent)
 
-        when (intent?.action) {
+        when (intent.action) {
             ACTION_PLAY_PAUSE -> togglePlayPause()
             ACTION_STOP -> {
-            stopForeground(STOP_FOREGROUND_REMOVE)
+                stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
             ACTION_TOGGLE_REPEAT -> toggleRepeat()
             ACTION_NEXT -> playNextSong()
             ACTION_PREVIOUS -> playPreviousSong()
             else -> {
-                val filePath = intent?.getStringExtra("filePath")
-                val initialPosition = intent?.getIntExtra("initial_position", 0) ?: 0
-                playlist = intent?.getStringArrayListExtra("playlist") ?: ArrayList()
+                val filePath = intent.getStringExtra("filePath")
+                val initialPosition = intent.getIntExtra("initial_position", 0)
+                playlist = intent.getStringArrayListExtra("playlist") ?: ArrayList()
                 currentTrackIndex = playlist.indexOf(filePath)
 
                 if (filePath != null) {
@@ -137,7 +162,7 @@ class MusicPlayerService : Service() {
                 }
             }
         }
-        return START_NOT_STICKY
+        return START_STICKY
     }
 
     private fun playSong(filePath: String, startPosition: Int = 0) {
@@ -155,6 +180,7 @@ class MusicPlayerService : Service() {
         mediaPlayer?.release()
 
         mediaPlayer = MediaPlayer().apply {
+            setWakeMode(applicationContext, android.os.PowerManager.PARTIAL_WAKE_LOCK)
             setDataSource(applicationContext, file.toUri())
             setOnPreparedListener {
                 Log.d("MusicPlayerService", "MediaPlayer prepared: $currentTrackName")
@@ -167,6 +193,7 @@ class MusicPlayerService : Service() {
                 broadcastState()
                 updateNotification()
                 startUpdatingSeekBar()
+                savePlaybackState()
             }
             setOnCompletionListener {
                 Log.d("MusicPlayerService", "MediaPlayer completion: $currentTrackName")
@@ -229,11 +256,21 @@ class MusicPlayerService : Service() {
     private val mediaSessionCallback = object : MediaSessionCompat.Callback() {
         override fun onPlay() {
             Log.d("MusicPlayerService", "MediaSession onPlay called")
-            if (mediaPlayer?.isPlaying == false) {
-                mediaPlayer?.start()
-                updatePlaybackState()
-                updateNotification()
-                broadcastState()
+            if (mediaPlayer != null && isPrepared) {
+                if (mediaPlayer?.isPlaying == false) {
+                    val focusGranted = requestAudioFocus()
+                    if (!focusGranted) Log.w("MusicPlayerService", "Audio focus not granted on resume")
+                    mediaPlayer?.start()
+                    updatePlaybackState()
+                    updateNotification()
+                    broadcastState()
+                }
+            } else {
+                // Cold start — nothing loaded, restore last playlist or load default
+                Log.d("MusicPlayerService", "onPlay cold start — restoring or loading default")
+                if (!restoreAndPlay()) {
+                    loadDefaultPlaylist()
+                }
             }
         }
 
@@ -241,10 +278,19 @@ class MusicPlayerService : Service() {
             Log.d("MusicPlayerService", "MediaSession onPause called")
             if (mediaPlayer?.isPlaying == true) {
                 mediaPlayer?.pause()
+                savePlaybackState()
                 updatePlaybackState()
                 updateNotification()
                 broadcastState()
             }
+        }
+
+        override fun onStop() {
+            stopMusic()
+        }
+
+        override fun onSeekTo(pos: Long) {
+            seekTo(pos.toInt())
         }
 
         override fun onSkipToNext() {
@@ -288,6 +334,10 @@ class MusicPlayerService : Service() {
             putExtra(EXTRA_POSITION, 0)
         }
         sendBroadcast(intent)
+
+        // Clear home screen widget
+        MusicPlayerWidgetProvider.updateAllWidgets(this, null, false)
+
         stopSelf()
     }
 
@@ -331,18 +381,121 @@ class MusicPlayerService : Service() {
         }
     }
 
-    override fun onBind(intent: Intent): IBinder = binder
+    private fun savePlaybackState() {
+        prefs.edit().apply {
+            putString(PREF_TRACK_PATH, currentFilePath)
+            putInt(PREF_TRACK_INDEX, currentTrackIndex)
+            putInt(PREF_POSITION, getCurrentPosition())
+            putStringSet(PREF_PLAYLIST, playlist.mapIndexed { i, s -> "$i|$s" }.toSet())
+            apply()
+        }
+    }
+
+    private fun restoreAndPlay(): Boolean {
+        val trackPath = prefs.getString(PREF_TRACK_PATH, null) ?: return false
+        val trackIndex = prefs.getInt(PREF_TRACK_INDEX, 0)
+        val position = prefs.getInt(PREF_POSITION, 0)
+        val playlistSet = prefs.getStringSet(PREF_PLAYLIST, null) ?: return false
+
+        // Restore playlist in correct order
+        playlist = ArrayList(playlistSet.sortedBy { 
+            it.substringBefore("|").toIntOrNull() ?: 0 
+        }.map { 
+            it.substringAfter("|") 
+        })
+
+        if (playlist.isEmpty() || !File(trackPath).exists()) return false
+
+        currentTrackIndex = trackIndex.coerceIn(0, playlist.size - 1)
+        Log.d("MusicPlayerService", "Restoring: track=$trackPath, index=$currentTrackIndex, position=$position")
+        playSong(trackPath, position)
+        return true
+    }
+
+    private fun loadDefaultPlaylist() {
+        // Scan FileManagerMusic library for any audio files
+        val musicLibraryDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), "FileManagerMusic")
+        if (!musicLibraryDir.exists()) {
+            Log.d("MusicPlayerService", "No music library found")
+            return
+        }
+
+        // Look for first playlist sub-folder with audio files
+        val playlistDirs = musicLibraryDir.listFiles { f -> f.isDirectory }?.sortedBy { it.name } ?: emptyList()
+        for (dir in playlistDirs) {
+            val audioFiles = dir.listFiles { f -> !f.isDirectory && isAudioFile(f.name) }
+                ?.sortedBy { it.name.lowercase() }
+                ?.map { it.absolutePath }
+                ?.toCollection(ArrayList()) ?: continue
+            if (audioFiles.isNotEmpty()) {
+                playlist = audioFiles
+                currentTrackIndex = 0
+                Log.d("MusicPlayerService", "Loading default playlist from: ${dir.name} (${audioFiles.size} tracks)")
+                playSong(audioFiles[0])
+                return
+            }
+        }
+
+        // Fallback: scan root of Music directory
+        val musicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
+        val allAudio = musicDir.listFiles { f -> !f.isDirectory && isAudioFile(f.name) }
+            ?.sortedBy { it.name.lowercase() }
+            ?.map { it.absolutePath }
+            ?.toCollection(ArrayList()) ?: ArrayList()
+
+        if (allAudio.isNotEmpty()) {
+            playlist = allAudio
+            currentTrackIndex = 0
+            Log.d("MusicPlayerService", "Loading fallback playlist from Music dir (${allAudio.size} tracks)")
+            playSong(allAudio[0])
+        } else {
+            Log.d("MusicPlayerService", "No audio files found anywhere")
+        }
+    }
+
+    private fun isAudioFile(name: String): Boolean {
+        val lower = name.lowercase()
+        return lower.endsWith(".mp3") || lower.endsWith(".wav") || lower.endsWith(".flac") ||
+               lower.endsWith(".ogg") || lower.endsWith(".aac") || lower.endsWith(".m4a") ||
+               lower.endsWith(".opus") || lower.endsWith(".wma") || lower.endsWith(".aiff")
+    }
+
+    override fun onBind(intent: Intent): IBinder? {
+        // If the binding is from a MediaBrowser client (system UI), let MediaBrowserServiceCompat handle it
+        if (SERVICE_INTERFACE == intent.action) {
+            return super.onBind(intent)
+        }
+        // For our in-app binding, return custom binder
+        return binder
+    }
+
+    override fun onGetRoot(clientPackageName: String, clientUid: Int, rootHints: Bundle?): BrowserRoot {
+        return BrowserRoot(MY_MEDIA_ROOT_ID, null)
+    }
+
+    override fun onLoadChildren(parentId: String, result: Result<MutableList<MediaBrowserCompat.MediaItem>>) {
+        // Return empty list — we don't expose a browsable tree, just need this for media resumption
+        result.sendResult(mutableListOf())
+    }
 
     inner class MusicPlayerBinder : Binder() {
         fun getService(): MusicPlayerService = this@MusicPlayerService
     }
 
     fun togglePlayPause() {
-        if (mediaPlayer?.isPlaying == true) mediaPlayer?.pause() else mediaPlayer?.start()
-        Log.d("MusicPlayerService", "togglePlayPause: isPlaying=${mediaPlayer?.isPlaying}")
-        updatePlaybackState()
-        updateNotification()
-        broadcastState()
+        if (mediaPlayer != null && isPrepared) {
+            if (mediaPlayer?.isPlaying == true) mediaPlayer?.pause() else mediaPlayer?.start()
+            Log.d("MusicPlayerService", "togglePlayPause: isPlaying=${mediaPlayer?.isPlaying}")
+            updatePlaybackState()
+            updateNotification()
+            broadcastState()
+        } else {
+            // Nothing loaded — restore last session or load default
+            Log.d("MusicPlayerService", "togglePlayPause cold start — restoring or loading default")
+            if (!restoreAndPlay()) {
+                loadDefaultPlaylist()
+            }
+        }
     }
 
     fun toggleRepeat() {
@@ -363,6 +516,9 @@ class MusicPlayerService : Service() {
             putExtra(EXTRA_POSITION, getCurrentPosition())
         }
         sendBroadcast(intent)
+
+        // Update home screen widget
+        MusicPlayerWidgetProvider.updateAllWidgets(this, getTrackName(), isPlaying())
     }
 
     private fun updatePlaybackState() {
@@ -410,7 +566,7 @@ class MusicPlayerService : Service() {
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val serviceChannel = NotificationChannel(
-                CHANNEL_ID, "Music Player", NotificationManager.IMPORTANCE_HIGH
+                CHANNEL_ID, "Music Player", NotificationManager.IMPORTANCE_LOW
             )
             serviceChannel.setSound(null, null)
             serviceChannel.enableVibration(false)
@@ -481,7 +637,7 @@ class MusicPlayerService : Service() {
                 "Play/Pause", playPausePendingIntent))
             .addAction(NotificationCompat.Action(R.drawable.ic_skip_next_24, "Next", nextPendingIntent))
             .setContentIntent(pendingIntent)
-            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
 
@@ -501,11 +657,28 @@ class MusicPlayerService : Service() {
         }
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        // When user swipes app from recents, keep the service alive if music is playing
+        if (isPlaying()) {
+            // Re-post the foreground notification to keep the service alive
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(1001, createNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+            } else {
+                startForeground(1001, createNotification())
+            }
+        } else {
+            stopSelf()
+        }
+        super.onTaskRemoved(rootIntent)
+    }
+
     override fun onDestroy() {
         super.onDestroy()
+        savePlaybackState()
         handler.removeCallbacks(updateSeekBarRunnable)
         mediaPlayer?.release()
         mediaPlayer = null
+        isPrepared = false
         abandonAudioFocus()
         mediaSession.release()
     }
