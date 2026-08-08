@@ -721,27 +721,37 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkAndPromptDefaultMusicPlayer() {
-        if (!isDefaultMusicPlayer()) {
-            com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-                .setTitle("Set Default Music Player")
-                .setMessage("To enjoy a seamless music playback experience, set File Manager as your default music player.")
-                .setPositiveButton("Set Default") { _, _ ->
-                    try {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                            startActivity(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))
-                        } else {
-                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                data = Uri.fromParts("package", packageName, null)
-                            }
-                            startActivity(intent)
-                        }
-                    } catch (e: Exception) {
-                        Toast.makeText(this, "Please set Default Apps in Settings manually", Toast.LENGTH_LONG).show()
-                    }
-                }
-                .setNegativeButton("Later", null)
-                .show()
+        if (isDefaultMusicPlayer()) return
+
+        val prefs = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        val lastPrompted = prefs.getLong("last_music_default_prompt", 0L)
+
+        if (lastPrompted > 0) {
+            val daysSince = (System.currentTimeMillis() - lastPrompted) / (24 * 60 * 60 * 1000L)
+            if (daysSince < 10) return
         }
+
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Set Default Music Player")
+            .setMessage("To enjoy a seamless music playback experience, set File Manager as your default music player.")
+            .setPositiveButton("Set Default") { _, _ ->
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        startActivity(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))
+                    } else {
+                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = Uri.fromParts("package", packageName, null)
+                        }
+                        startActivity(intent)
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(this, "Please set Default Apps in Settings manually", Toast.LENGTH_LONG).show()
+                }
+            }
+            .setNegativeButton("Later") { _, _ ->
+                prefs.edit().putLong("last_music_default_prompt", System.currentTimeMillis()).apply()
+            }
+            .show()
     }
 
     override fun onDestroy() {
