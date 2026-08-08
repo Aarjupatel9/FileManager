@@ -5,6 +5,9 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.net.Uri
+import android.os.Environment
+import android.provider.OpenableColumns
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -33,6 +36,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.io.FileOutputStream
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
@@ -58,8 +62,11 @@ class JapCounterActivity : AppCompatActivity() {
     private var currentCategory = ""
     private var isVibrateOn = true
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    private var isMalaMode = false
+    private var malaCount = 0
     
     private var saveJob: kotlinx.coroutines.Job? = null
+    private lateinit var importFileLauncher: androidx.activity.result.ActivityResultLauncher<Array<String>>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,10 +75,28 @@ class JapCounterActivity : AppCompatActivity() {
 
         sharedPrefs = getSharedPreferences("jap_prefs", Context.MODE_PRIVATE)
         isVibrateOn = sharedPrefs.getBoolean("vibrate", true)
+        isMalaMode = sharedPrefs.getBoolean("mala_mode", false)
         updateVibrateIcon()
+        updateMalaModeIcon()
+
+        importFileLauncher = registerForActivityResult(
+            androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
+        ) { uri ->
+            if (uri != null) importData(uri)
+        }
 
         // Request exact alarm permission for reminders (Android 12+)
         Permissions(this, null).requestExactAlarmPermission()
+
+        // Schedule daily gentle nudges if enabled
+        if (sharedPrefs.getBoolean("daily_nudge_enabled", true)) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1002)
+                }
+            }
+            DailyNudgeReceiver.scheduleDailyNudges(this)
+        }
 
         loadData()
 
@@ -81,6 +106,13 @@ class JapCounterActivity : AppCompatActivity() {
             isVibrateOn = !isVibrateOn
             sharedPrefs.edit().putBoolean("vibrate", isVibrateOn).apply()
             updateVibrateIcon()
+        }
+
+        binding.malaModeButton.setOnClickListener {
+            isMalaMode = !isMalaMode
+            sharedPrefs.edit().putBoolean("mala_mode", isMalaMode).apply()
+            updateMalaModeIcon()
+            updateUI()
         }
 
         binding.statsButton.setOnClickListener {
@@ -184,6 +216,18 @@ class JapCounterActivity : AppCompatActivity() {
         }
     }
 
+    private fun updateMalaModeIcon() {
+        if (isMalaMode) {
+            binding.malaModeButton.setImageResource(R.drawable.baseline_check_circle_24)
+            val tv = android.util.TypedValue()
+            theme.resolveAttribute(com.google.android.material.R.attr.colorPrimary, tv, true)
+            binding.malaModeButton.imageTintList = android.content.res.ColorStateList.valueOf(tv.data)
+        } else {
+            binding.malaModeButton.setImageResource(R.drawable.baseline_radio_button_unchecked_24)
+            binding.malaModeButton.imageTintList = androidx.core.content.ContextCompat.getColorStateList(this, android.R.color.darker_gray)
+        }
+    }
+
     private fun loadData() {
         lifecycleScope.launch(Dispatchers.IO) {
             if (dataFile.exists()) {
@@ -197,6 +241,11 @@ class JapCounterActivity : AppCompatActivity() {
                 categoryColors = json.optJSONObject("category_colors") ?: JSONObject()
                 categoryVibrate108 = json.optJSONObject("category_vibrate_108") ?: JSONObject()
                 grandTotal = json.optLong("grand_total", 0L)
+                // Restore preferences from file if present
+                val prefsJson = json.optJSONObject("preferences")
+                if (prefsJson != null) {
+                    withContext(Dispatchers.Main) { applyPreferencesJson(prefsJson) }
+                }
             } else {
                 categories.addAll(listOf("Guru mantra", "Radha", "Om Namah Shivaya"))
                 saveDataSync()
@@ -214,13 +263,51 @@ class JapCounterActivity : AppCompatActivity() {
         json.put("category_colors", categoryColors)
         json.put("category_vibrate_108", categoryVibrate108)
         json.put("grand_total", grandTotal)
+        json.put("preferences", buildPreferencesJson())
         dataFile.writeText(json.toString())
+    }
+
+    private fun buildPreferencesJson(): JSONObject {
+        return JSONObject().apply {
+            put("vibrate", sharedPrefs.getBoolean("vibrate", true))
+            put("mala_mode", sharedPrefs.getBoolean("mala_mode", false))
+            put("chip_count_badge", sharedPrefs.getBoolean("chip_count_badge", true))
+            put("daily_nudge_enabled", sharedPrefs.getBoolean("daily_nudge_enabled", true))
+            put("reminderIntervalMins", sharedPrefs.getInt("reminderIntervalMins", 0))
+        }
+    }
+
+    fun applyPreferencesJson(prefs: JSONObject) {
+        val editor = sharedPrefs.edit()
+        if (prefs.has("vibrate")) editor.putBoolean("vibrate", prefs.getBoolean("vibrate"))
+        if (prefs.has("mala_mode")) editor.putBoolean("mala_mode", prefs.getBoolean("mala_mode"))
+        if (prefs.has("chip_count_badge")) editor.putBoolean("chip_count_badge", prefs.getBoolean("chip_count_badge"))
+        if (prefs.has("daily_nudge_enabled")) editor.putBoolean("daily_nudge_enabled", prefs.getBoolean("daily_nudge_enabled"))
+        if (prefs.has("reminderIntervalMins")) editor.putInt("reminderIntervalMins", prefs.getInt("reminderIntervalMins"))
+        editor.apply()
+
+        // Apply to in-memory state
+        isVibrateOn = sharedPrefs.getBoolean("vibrate", true)
+        isMalaMode = sharedPrefs.getBoolean("mala_mode", false)
+        updateVibrateIcon()
+        updateMalaModeIcon()
+
+        // Re-schedule alarms based on restored preferences
+        val intervalMins = sharedPrefs.getInt("reminderIntervalMins", 0)
+        scheduleReminders(intervalMins)
+        if (sharedPrefs.getBoolean("daily_nudge_enabled", true)) {
+            DailyNudgeReceiver.scheduleDailyNudges(this)
+        } else {
+            DailyNudgeReceiver.cancelDailyNudges(this)
+        }
     }
 
     private fun setupChips() {
         binding.categoryChipGroup.removeAllViews()
         categories.sortByDescending { categoryTotals.optLong(it, 0L) }
         if (categories.isNotEmpty() && currentCategory.isEmpty()) currentCategory = categories[0]
+        val showBadge = sharedPrefs.getBoolean("chip_count_badge", true)
+        val today = dateFormat.format(Date())
         for (category in categories) {
             val chip = layoutInflater.inflate(R.layout.item_chip, binding.categoryChipGroup, false) as Chip
             chip.text = category
@@ -233,6 +320,15 @@ class JapCounterActivity : AppCompatActivity() {
                     chip.setTextColor(color)
                     chip.chipStrokeColor = ContextCompat.getColorStateList(this, R.color.chip_stroke_color)
                 } catch (e: Exception) {}
+            }
+            // Count badge
+            if (showBadge) {
+                val todayCount = dailyCounts.optJSONObject(today)?.optLong(category, 0L) ?: 0L
+                if (todayCount > 0) {
+                    chip.isChipIconVisible = false
+                    val badgeText = if (todayCount >= 1000) "${todayCount / 1000}k" else todayCount.toString()
+                    chip.text = "$category  · $badgeText"
+                }
             }
             if (category == currentCategory) chip.isChecked = true
             chip.setOnClickListener {
@@ -258,14 +354,24 @@ class JapCounterActivity : AppCompatActivity() {
         todayObj.put(currentCategory, newCount)
         categoryTotals.put(currentCategory, categoryTotals.optLong(currentCategory, 0L) + 1)
         grandTotal += 1
-        
+
         if (newCount % 108 == 0L && categoryVibrate108.optBoolean(currentCategory, true)) {
             playSpecialVibration()
         }
 
         val dailyTarget = targetsObj.optJSONObject(currentCategory)?.optLong("daily", 0L) ?: 0L
         if (dailyTarget > 0 && newCount == dailyTarget) triggerCelebration()
-        
+
+        // Mala mode tracking
+        if (isMalaMode) {
+            val malaProgress = (newCount % 108).toInt()
+            malaCount = (newCount / 108).toInt()
+            if (malaProgress == 0 && newCount > 0) {
+                // Completed a mala — show toast
+                Toast.makeText(this, "Mala complete! ($malaCount total)", Toast.LENGTH_SHORT).show()
+            }
+        }
+
         saveJob?.cancel()
         saveJob = lifecycleScope.launch(Dispatchers.IO) {
             kotlinx.coroutines.delay(5000)
@@ -296,11 +402,14 @@ class JapCounterActivity : AppCompatActivity() {
         val todayCatCount = dailyCounts.optJSONObject(today)?.optLong(currentCategory, 0L) ?: 0L
         binding.countText.text = todayCatCount.toString()
         val colorStr = categoryColors.optString(currentCategory, "")
+        val tv = android.util.TypedValue()
+        theme.resolveAttribute(com.google.android.material.R.attr.colorPrimary, tv, true)
+        val primaryColor = tv.data
         if (colorStr.isNotEmpty()) {
             try { binding.countText.setTextColor(Color.parseColor(colorStr)) }
-            catch (e: Exception) { binding.countText.setTextColor(ContextCompat.getColor(this, R.color.primary_color)) }
+            catch (e: Exception) { binding.countText.setTextColor(primaryColor) }
         } else {
-            binding.countText.setTextColor(ContextCompat.getColor(this, R.color.primary_color))
+            binding.countText.setTextColor(primaryColor)
         }
         val dailyTarget = targetsObj.optJSONObject(currentCategory)?.optLong("daily", 0L) ?: 0L
         if (dailyTarget > 0) {
@@ -309,6 +418,61 @@ class JapCounterActivity : AppCompatActivity() {
         } else {
             binding.targetProgressText.visibility = View.GONE
         }
+
+        // Mala mode UI
+        if (isMalaMode) {
+            binding.malaProgressView.visibility = View.VISIBLE
+            binding.malaCountText.visibility = View.VISIBLE
+            val malaProgress = (todayCatCount % 108).toInt()
+            malaCount = (todayCatCount / 108).toInt()
+            binding.malaProgressView.progress = malaProgress
+            binding.malaCountText.text = "$malaCount mala${if (malaCount != 1) "s" else ""} completed"
+            if (colorStr.isNotEmpty()) {
+                try { binding.malaProgressView.activeColor = Color.parseColor(colorStr) }
+                catch (e: Exception) {}
+            }
+        } else {
+            binding.malaProgressView.visibility = View.GONE
+            binding.malaCountText.visibility = View.GONE
+        }
+
+        // Streak
+        val streak = calculateStreak()
+        if (streak > 0) {
+            binding.streakText.visibility = View.VISIBLE
+            binding.streakText.text = "$streak-day streak 🔥"
+        } else {
+            binding.streakText.visibility = View.GONE
+        }
+    }
+
+    private fun calculateStreak(): Int {
+        val cal = java.util.Calendar.getInstance()
+        var streak = 0
+
+        for (i in 0 until 365) {
+            cal.time = Date()
+            cal.add(java.util.Calendar.DAY_OF_YEAR, -i)
+            val dateStr = dateFormat.format(cal.time)
+            val dayObj = dailyCounts.optJSONObject(dateStr)
+            val count = if (currentCategory.isEmpty()) {
+                var total = 0L
+                val keys = dayObj?.keys()
+                while (keys?.hasNext() == true) total += dayObj.optLong(keys.next(), 0L)
+                total
+            } else {
+                dayObj?.optLong(currentCategory, 0L) ?: 0L
+            }
+
+            if (count > 0) {
+                streak++
+            } else {
+                if (i == 0) continue
+                break
+            }
+        }
+
+        return streak
     }
 
     private fun showAddCategoryDialog() {
@@ -345,7 +509,16 @@ class JapCounterActivity : AppCompatActivity() {
         val spinner = view.findViewById<Spinner>(R.id.reminderSpinner)
         val colorLayout = view.findViewById<LinearLayout>(R.id.colorPickerLayout)
         val vibrate108Check = view.findViewById<CheckBox>(R.id.vibrate108Checkbox)
+        val chipBadgeCheck = view.findViewById<CheckBox>(R.id.chipBadgeCheckbox)
+        val dailyNudgeCheck = view.findViewById<CheckBox>(R.id.dailyNudgeCheckbox)
         val disconnectBtn = view.findViewById<Button>(R.id.disconnectCloudBtn)
+        val exportBtn = view.findViewById<Button>(R.id.exportBtn)
+        val importBtn = view.findViewById<Button>(R.id.importBtn)
+
+        exportBtn.setOnClickListener { exportData() }
+        importBtn.setOnClickListener {
+            importFileLauncher.launch(arrayOf("application/json", "*/*"))
+        }
         
         val catTargets = targetsObj.optJSONObject(currentCategory)
         dailyEdit.setText(catTargets?.optLong("daily", 0L)?.takeIf { it > 0 }?.toString() ?: "")
@@ -360,6 +533,8 @@ class JapCounterActivity : AppCompatActivity() {
         }
         spinner.setSelection(selection)
         vibrate108Check.isChecked = categoryVibrate108.optBoolean(currentCategory, true)
+        chipBadgeCheck.isChecked = sharedPrefs.getBoolean("chip_count_badge", true)
+        dailyNudgeCheck.isChecked = sharedPrefs.getBoolean("daily_nudge_enabled", true)
 
         // Token disconnect logic
         val token = sharedPrefs.getString("auth_token", null)
@@ -407,6 +582,18 @@ class JapCounterActivity : AppCompatActivity() {
                 1 -> 1; 2 -> 30; 3 -> 60; 4 -> 180; 5 -> 360; else -> 0
             }
             sharedPrefs.edit().putInt("reminderIntervalMins", selectedMins).apply()
+            sharedPrefs.edit().putBoolean("chip_count_badge", chipBadgeCheck.isChecked).apply()
+            sharedPrefs.edit().putBoolean("daily_nudge_enabled", dailyNudgeCheck.isChecked).apply()
+            if (dailyNudgeCheck.isChecked) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                        requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1002)
+                    }
+                }
+                DailyNudgeReceiver.scheduleDailyNudges(this)
+            } else {
+                DailyNudgeReceiver.cancelDailyNudges(this)
+            }
             scheduleReminders(selectedMins)
             lifecycleScope.launch(Dispatchers.IO) { saveDataSync() }
             setupChips()
@@ -414,7 +601,55 @@ class JapCounterActivity : AppCompatActivity() {
         builder.setNegativeButton("Cancel", null)
         builder.show()
     }
-    
+
+    private fun exportData() {
+        if (!dataFile.exists()) {
+            Toast.makeText(this, "No data to export", Toast.LENGTH_SHORT).show()
+            return
+        }
+        try {
+            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val exportDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "FileManager")
+            if (!exportDir.exists()) exportDir.mkdirs()
+            val exportFile = File(exportDir, "jap_data_backup_$timestamp.json")
+            FileOutputStream(exportFile).use { it.write(dataFile.readText().toByteArray()) }
+            Toast.makeText(this, "Exported to Downloads/FileManager/${exportFile.name}", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Export failed: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun importData(uri: Uri) {
+        try {
+            val jsonStr = contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                ?: throw Exception("Could not read file")
+            val json = JSONObject(jsonStr)
+
+            // Validate it has expected fields
+            if (!json.has("daily_counts") || !json.has("grand_total")) {
+                Toast.makeText(this, "Invalid backup file format", Toast.LENGTH_LONG).show()
+                return
+            }
+
+            // Replace local data
+            categories.clear()
+            val catArray = json.optJSONArray("categories") ?: JSONArray()
+            for (i in 0 until catArray.length()) categories.add(catArray.getString(i))
+            dailyCounts = json.optJSONObject("daily_counts") ?: JSONObject()
+            categoryTotals = json.optJSONObject("category_totals") ?: JSONObject()
+            targetsObj = json.optJSONObject("targets") ?: JSONObject()
+            categoryColors = json.optJSONObject("category_colors") ?: JSONObject()
+            categoryVibrate108 = json.optJSONObject("category_vibrate_108") ?: JSONObject()
+            grandTotal = json.optLong("grand_total", 0L)
+
+            saveDataSync()
+            setupChips()
+            Toast.makeText(this, "Data imported successfully", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Import failed: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
     private fun scheduleReminders(intervalMins: Int) {
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(this, JapReminderReceiver::class.java)
@@ -431,5 +666,17 @@ class JapCounterActivity : AppCompatActivity() {
         super.onPause()
         saveJob?.cancel()
         if (categories.isNotEmpty()) lifecycleScope.launch(Dispatchers.IO) { saveDataSync() }
+    }
+
+    private var isFirstResume = true
+
+    override fun onResume() {
+        super.onResume()
+        if (isFirstResume) {
+            isFirstResume = false
+            return // onCreate already called loadData()
+        }
+        // Reload from file in case JapStatsActivity modified it (conflict resolution, pull)
+        loadData()
     }
 }

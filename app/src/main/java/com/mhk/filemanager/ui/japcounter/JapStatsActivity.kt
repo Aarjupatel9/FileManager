@@ -29,6 +29,7 @@ import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -42,6 +43,7 @@ class JapStatsActivity : AppCompatActivity() {
     private var activeCategory = ""
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     private var historyAdapter: HistoryAdapter? = null
+    private var currentPeriod = 0 // 0=Week, 1=Month, 2=All
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,6 +58,16 @@ class JapStatsActivity : AppCompatActivity() {
 
         binding.backButton.setOnClickListener { finish() }
         binding.syncButton.setOnClickListener { handleSyncChoice() }
+
+        binding.periodTabLayout.addOnTabSelectedListener(object :
+            com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab) {
+                currentPeriod = tab.position
+                updateStats()
+            }
+            override fun onTabUnselected(tab: com.google.android.material.tabs.TabLayout.Tab) {}
+            override fun onTabReselected(tab: com.google.android.material.tabs.TabLayout.Tab) {}
+        })
     }
 
     private fun setupRecyclerView() {
@@ -166,6 +178,12 @@ class JapStatsActivity : AppCompatActivity() {
             }
             historyList.sortByDescending { it.first }
 
+            // Bar chart data based on current period
+            val chartEntries = buildChartEntries(dailyCounts)
+
+            // Streak calculation
+            val streak = calculateStreak(dailyCounts)
+
             withContext(Dispatchers.Main) {
                 binding.todayCategoryCountText.text = todayCatCount.toString()
                 binding.todayTotalCountText.text = todayAllCategories.toString()
@@ -179,15 +197,120 @@ class JapStatsActivity : AppCompatActivity() {
 
                 if (activeColor != null) {
                     binding.todayCategoryCountText.setTextColor(activeColor)
-                    binding.overallCategoryCountText.setTextColor(activeColor)
+                    binding.barChartView.barColor = activeColor
                 } else {
-                    binding.todayCategoryCountText.setTextColor(ContextCompat.getColor(this@JapStatsActivity, R.color.primary_color))
-                    binding.overallCategoryCountText.setTextColor(ContextCompat.getColor(this@JapStatsActivity, R.color.primary_color))
+                    val tv = android.util.TypedValue()
+                    theme.resolveAttribute(com.google.android.material.R.attr.colorPrimary, tv, true)
+                    val primaryColor = tv.data
+                    binding.todayCategoryCountText.setTextColor(primaryColor)
+                    binding.barChartView.barColor = primaryColor
                 }
+
+                // Streak
+                binding.streakText.text = "$streak-day streak"
+                binding.streakEmoji.text = when {
+                    streak >= 30 -> "🔥🔥🔥"
+                    streak >= 7 -> "🔥🔥"
+                    streak >= 1 -> "🔥"
+                    else -> "❄️"
+                }
+
+                // Bar chart
+                binding.barChartView.setData(chartEntries)
 
                 historyAdapter?.submitList(historyList, activeColor)
             }
         }
+    }
+
+    private fun buildChartEntries(dailyCounts: JSONObject): List<BarChartView.BarEntry> {
+        val cal = Calendar.getInstance()
+        val today = dateFormat.format(Date())
+        val entries = mutableListOf<BarChartView.BarEntry>()
+
+        when (currentPeriod) {
+            0 -> { // Week — last 7 days
+                for (i in 6 downTo 0) {
+                    cal.time = Date()
+                    cal.add(Calendar.DAY_OF_YEAR, -i)
+                    val dateStr = dateFormat.format(cal.time)
+                    val dayObj = dailyCounts.optJSONObject(dateStr)
+                    val count = if (activeCategory.isEmpty()) {
+                        calculateTotalForDay(dayObj)
+                    } else {
+                        dayObj?.optLong(activeCategory, 0L) ?: 0L
+                    }
+                    val label = SimpleDateFormat("EEE", Locale.getDefault()).format(cal.time)
+                    entries.add(BarChartView.BarEntry(label, count, dateStr))
+                }
+            }
+            1 -> { // Month — last 30 days, grouped by day
+                val dayFormat = SimpleDateFormat("d", Locale.getDefault())
+                for (i in 29 downTo 0) {
+                    cal.time = Date()
+                    cal.add(Calendar.DAY_OF_YEAR, -i)
+                    val dateStr = dateFormat.format(cal.time)
+                    val dayObj = dailyCounts.optJSONObject(dateStr)
+                    val count = if (activeCategory.isEmpty()) {
+                        calculateTotalForDay(dayObj)
+                    } else {
+                        dayObj?.optLong(activeCategory, 0L) ?: 0L
+                    }
+                    val label = dayFormat.format(cal.time)
+                    entries.add(BarChartView.BarEntry(label, count, dateStr))
+                }
+            }
+            2 -> { // All — group by date, show all (may be many)
+                val allDates = mutableListOf<String>()
+                val keys = dailyCounts.keys()
+                while (keys.hasNext()) allDates.add(keys.next())
+                allDates.sort()
+                val monthFormat = SimpleDateFormat("MMM", Locale.getDefault())
+                for (dateStr in allDates) {
+                    val dayObj = dailyCounts.optJSONObject(dateStr) ?: continue
+                    val count = if (activeCategory.isEmpty()) {
+                        calculateTotalForDay(dayObj)
+                    } else {
+                        dayObj.optLong(activeCategory, 0L)
+                    }
+                    try {
+                        val date = dateFormat.parse(dateStr)
+                        val label = monthFormat.format(date)
+                        entries.add(BarChartView.BarEntry(label, count, dateStr))
+                    } catch (e: Exception) {}
+                }
+            }
+        }
+
+        return entries
+    }
+
+    private fun calculateStreak(dailyCounts: JSONObject): Int {
+        val cal = Calendar.getInstance()
+        var streak = 0
+
+        // Start from today, go backwards
+        for (i in 0 until 365) {
+            cal.time = Date()
+            cal.add(Calendar.DAY_OF_YEAR, -i)
+            val dateStr = dateFormat.format(cal.time)
+            val dayObj = dailyCounts.optJSONObject(dateStr)
+            val count = if (activeCategory.isEmpty()) {
+                calculateTotalForDay(dayObj)
+            } else {
+                dayObj?.optLong(activeCategory, 0L) ?: 0L
+            }
+
+            if (count > 0) {
+                streak++
+            } else {
+                // Allow today to be 0 without breaking streak (haven't counted yet today)
+                if (i == 0) continue
+                break
+            }
+        }
+
+        return streak
     }
 
     private fun calculateTotalForDay(dayObj: JSONObject?): Long {
@@ -220,6 +343,10 @@ class JapStatsActivity : AppCompatActivity() {
             dialog.dismiss()
             confirmPull(token)
         }
+        dialogView.findViewById<View>(R.id.resolveConflictsOption).setOnClickListener {
+            dialog.dismiss()
+            performResolveConflicts(token)
+        }
         dialogView.findViewById<View>(R.id.disconnectOption).setOnClickListener {
             dialog.dismiss()
             sharedPrefs.edit().remove("auth_token").apply()
@@ -236,6 +363,34 @@ class JapStatsActivity : AppCompatActivity() {
             .setPositiveButton("Yes, Pull Data") { _, _ -> performPull(token) }
             .setNegativeButton("No", null)
             .show()
+    }
+
+    private fun performResolveConflicts(token: String) {
+        val data = jsonData ?: return
+        binding.progressBar.visibility = View.VISIBLE
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val merged = fetchAndMergeConflicts(token, data)
+                withContext(Dispatchers.Main) {
+                    binding.progressBar.visibility = View.GONE
+                    if (merged != null && merged != data) {
+                        dataFile.writeText(merged.toString())
+                        jsonData = merged
+                        updateStats()
+                        Toast.makeText(this@JapStatsActivity, "Conflicts resolved — data saved", Toast.LENGTH_SHORT).show()
+                    } else if (merged != null && merged == data) {
+                        Toast.makeText(this@JapStatsActivity, "No conflicts found — local is up to date", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(this@JapStatsActivity, "Failed to fetch conflicts", Toast.LENGTH_LONG).show()
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    binding.progressBar.visibility = View.GONE
+                    Toast.makeText(this@JapStatsActivity, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
     }
 
     private fun showLoginDialog() {
@@ -328,11 +483,11 @@ class JapStatsActivity : AppCompatActivity() {
                     val errorResponse = try {
                         conn.errorStream?.bufferedReader()?.use { it.readText() }
                     } catch (e: Exception) { null }
-                    
+
                     val errorMessage = try {
                         if (errorResponse != null) JSONObject(errorResponse).getString("message") else "Sync Blocked"
                     } catch(e: Exception) { "Sync Blocked" }
-                    
+
                     withContext(Dispatchers.Main) {
                         binding.progressBar.visibility = View.GONE
                         Toast.makeText(this@JapStatsActivity, errorMessage, Toast.LENGTH_LONG).show()
@@ -345,6 +500,59 @@ class JapStatsActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private fun fetchAndMergeConflicts(token: String, localData: JSONObject): JSONObject? {
+        val url = URL("https://codeshare.auctionng.org/api/counter/conflicts")
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "POST"
+        conn.setRequestProperty("Content-Type", "application/json")
+        conn.setRequestProperty("Authorization", "Bearer $token")
+        conn.doOutput = true
+        val body = JSONObject().apply { put("data", localData) }
+        OutputStreamWriter(conn.outputStream).use { it.write(body.toString()) }
+
+        if (conn.responseCode != 200) return null
+
+        val response = conn.inputStream.bufferedReader().use { it.readText() }
+        val responseJson = JSONObject(response)
+        val conflicts = responseJson.optJSONArray("conflicts") ?: return localData
+
+        val merged = JSONObject(localData.toString())
+        val dailyCounts = merged.optJSONObject("daily_counts") ?: JSONObject().also { merged.put("daily_counts", it) }
+
+        for (i in 0 until conflicts.length()) {
+            val conflict = conflicts.getJSONObject(i)
+            val date = conflict.getString("date")
+            val category = conflict.getString("category")
+            val serverCount = conflict.getInt("serverCount")
+
+            val dayCounts = dailyCounts.optJSONObject(date) ?: JSONObject().also { dailyCounts.put(date, it) }
+            dayCounts.put(category, serverCount)
+        }
+
+        // Recalculate grand_total
+        var grandTotal = 0L
+        for (dateKey in dailyCounts.keys()) {
+            val dayObj = dailyCounts.optJSONObject(dateKey) ?: continue
+            for (catKey in dayObj.keys()) {
+                grandTotal += dayObj.optLong(catKey, 0L)
+            }
+        }
+        merged.put("grand_total", grandTotal)
+
+        // Update category_totals from merged daily counts
+        val categoryTotals = merged.optJSONObject("category_totals") ?: JSONObject().also { merged.put("category_totals", it) }
+        for (catKey in categoryTotals.keys()) {
+            var catTotal = 0L
+            for (dateKey in dailyCounts.keys()) {
+                val dayObj = dailyCounts.optJSONObject(dateKey) ?: continue
+                catTotal += dayObj.optLong(catKey, 0L)
+            }
+            categoryTotals.put(catKey, catTotal)
+        }
+
+        return merged
     }
 
     private fun performPull(token: String) {
@@ -383,6 +591,25 @@ class JapStatsActivity : AppCompatActivity() {
                         val categoryTotals = actualData.optJSONObject("category_totals") ?: JSONObject()
                         categories.sortByDescending { categoryTotals.optLong(it, 0L) }
                         
+                        // Apply preferences from cloud if present
+                        val prefsJson = actualData.optJSONObject("preferences")
+                        if (prefsJson != null) {
+                            val japPrefs = getSharedPreferences("jap_prefs", Context.MODE_PRIVATE)
+                            val editor = japPrefs.edit()
+                            if (prefsJson.has("vibrate")) editor.putBoolean("vibrate", prefsJson.getBoolean("vibrate"))
+                            if (prefsJson.has("mala_mode")) editor.putBoolean("mala_mode", prefsJson.getBoolean("mala_mode"))
+                            if (prefsJson.has("chip_count_badge")) editor.putBoolean("chip_count_badge", prefsJson.getBoolean("chip_count_badge"))
+                            if (prefsJson.has("daily_nudge_enabled")) editor.putBoolean("daily_nudge_enabled", prefsJson.getBoolean("daily_nudge_enabled"))
+                            if (prefsJson.has("reminderIntervalMins")) editor.putInt("reminderIntervalMins", prefsJson.getInt("reminderIntervalMins"))
+                            editor.apply()
+
+                            if (prefsJson.optBoolean("daily_nudge_enabled", true)) {
+                                DailyNudgeReceiver.scheduleDailyNudges(this@JapStatsActivity)
+                            } else {
+                                DailyNudgeReceiver.cancelDailyNudges(this@JapStatsActivity)
+                            }
+                        }
+                        
                         setupChips()
                         updateStats()
                     }
@@ -399,10 +626,13 @@ class JapStatsActivity : AppCompatActivity() {
     private inner class HistoryAdapter : RecyclerView.Adapter<HistoryAdapter.ViewHolder>() {
         private var items = listOf<Pair<String, Long>>()
         private var activeColor: Int? = null
+        private var maxValue: Long = 1L
 
         fun submitList(newList: List<Pair<String, Long>>, color: Int?) {
             items = newList
             activeColor = color
+            maxValue = newList.maxOfOrNull { it.second } ?: 1L
+            if (maxValue == 0L) maxValue = 1L
             notifyDataSetChanged()
         }
 
@@ -417,9 +647,16 @@ class JapStatsActivity : AppCompatActivity() {
             holder.countText.text = item.second.toString()
             if (activeColor != null) {
                 holder.countText.setTextColor(activeColor!!)
+                holder.progressBar.setIndicatorColor(activeColor!!)
             } else {
-                holder.countText.setTextColor(ContextCompat.getColor(this@JapStatsActivity, R.color.primary_color))
+                val tv = android.util.TypedValue()
+                theme.resolveAttribute(com.google.android.material.R.attr.colorPrimary, tv, true)
+                val primaryColor = tv.data
+                holder.countText.setTextColor(primaryColor)
+                holder.progressBar.setIndicatorColor(primaryColor)
             }
+            val progress = ((item.second.toFloat() / maxValue.toFloat()) * 100).toInt()
+            holder.progressBar.progress = progress
         }
 
         override fun getItemCount() = items.size
@@ -427,6 +664,7 @@ class JapStatsActivity : AppCompatActivity() {
         inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val dateText: TextView = view.findViewById(R.id.historyDateText)
             val countText: TextView = view.findViewById(R.id.historyCountText)
+            val progressBar: com.google.android.material.progressindicator.LinearProgressIndicator = view.findViewById(R.id.historyProgressBar)
         }
     }
 }

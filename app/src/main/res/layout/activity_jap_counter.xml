@@ -86,6 +86,20 @@
             app:layout_constraintTop_toTopOf="parent"
             app:tint="?attr/colorOnSurface" />
 
+        <ImageButton
+            android:id="@+id/malaModeButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginEnd="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Mala Mode"
+            android:padding="8dp"
+            android:src="@drawable/baseline_radio_button_unchecked_24"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/settingsButton"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="?attr/colorOnSurface" />
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <!-- Category Selector: Horizontal Scrollable Chips -->
@@ -122,6 +136,17 @@
                 app:singleSelection="true"/>
                 
         </HorizontalScrollView>
+
+        <TextView
+            android:id="@+id/streakText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="4dp"
+            android:text=""
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="13sp"
+            android:visibility="gone" />
     </LinearLayout>
 
     <FrameLayout
@@ -155,33 +180,62 @@
                 android:gravity="center"
                 android:orientation="vertical">
 
-                <TextView
-                    android:id="@+id/countText"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="0"
-                    android:textColor="?attr/colorOnPrimaryContainer"
-                    android:textSize="90sp"
-                    android:textStyle="bold" />
-                    
-                <TextView
-                    android:id="@+id/targetProgressText"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Target: -"
-                    android:visibility="gone"
-                    android:textColor="?attr/colorOnPrimaryContainer"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
+                <com.mhk.filemanager.ui.japcounter.MalaProgressView
+                    android:id="@+id/malaProgressView"
+                    android:layout_width="240dp"
+                    android:layout_height="240dp"
+                    android:visibility="gone" />
 
-                <TextView
+                <FrameLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="Tap to Count"
-                    android:textColor="?attr/colorOnPrimaryContainer"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
+                    android:layout_marginTop="-240dp">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/countText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0"
+                            android:textColor="?attr/colorOnPrimaryContainer"
+                            android:textSize="90sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/targetProgressText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Target: -"
+                            android:visibility="gone"
+                            android:textColor="?attr/colorOnPrimaryContainer"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/malaCountText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0 malas"
+                            android:visibility="gone"
+                            android:textColor="?attr/colorOnPrimaryContainer"
+                            android:textSize="14sp"
+                            android:layout_marginTop="4dp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="Tap to Count"
+                            android:textColor="?attr/colorOnPrimaryContainer"
+                            android:textSize="18sp"
+                            android:textStyle="bold" />
+                </LinearLayout>
+            </FrameLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
     </FrameLayout>
